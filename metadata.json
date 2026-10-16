@@ -1,0 +1,6 @@
+{
+  "name": "Tulizaana - Santé Mentale & Bien-être",
+  "description": "Briser les tabous et l’isolement : l’espace d’entraide et de résilience solidaire pour les personnes touchées par des défis de santé en Afrique.",
+  "requestFramePermissions": ["microphone", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

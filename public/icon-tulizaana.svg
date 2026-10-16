@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" fill="none">
+  <defs>
+    <linearGradient id="tulizaanaGrad" x1="15%" y1="10%" x2="85%" y2="90%">
+      <stop offset="0%" stop-color="#00F0D0" />
+      <stop offset="50%" stop-color="#00D2C4" />
+      <stop offset="100%" stop-color="#00B4D8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Circle Ring -->
+  <circle cx="500" cy="500" r="460" stroke="url(#tulizaanaGrad)" stroke-width="50" fill="none" />
+
+  <!-- Left Ring -->
+  <circle cx="160" cy="500" r="62" stroke="url(#tulizaanaGrad)" stroke-width="36" fill="none" />
+
+  <!-- Main Center & Right Silhouette Emblem -->
+  <!-- Vertical pillar and lower sweep connecting to outer circle -->
+  <path
+    d="M 265 110
+       L 545 55
+       L 545 680
+       C 545 700, 560 710, 580 710
+       L 900 690
+       C 840 840, 710 935, 540 955
+       C 430 965, 330 915, 265 830
+       C 265 780, 265 600, 265 110 Z"
+    fill="url(#tulizaanaGrad)"
+  />
+
+  <!-- Top Right Arc Accent -->
+  <path
+    d="M 545 55
+       C 730 65, 885 185, 940 350
+       L 850 420
+       C 800 300, 680 200, 545 180 Z"
+    fill="url(#tulizaanaGrad)"
+  />
+
+  <!-- Right Head Circle / Dot -->
+  <circle cx="710" cy="360" r="142" fill="url(#tulizaanaGrad)" />
+</svg>

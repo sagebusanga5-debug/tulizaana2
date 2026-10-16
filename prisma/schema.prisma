@@ -1,0 +1,641 @@
+// Prisma Schema for Tulizaana Ecosystem
+// Provider: PostgreSQL
+// Connection configured via DATABASE_URL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Chantier 7.7 : les operations Prisma qui prennent un verrou consultatif
+  // (migrate status / migrate deploy) doivent passer par la connexion directe
+  // en mode session. Le pooler en mode transaction (port 6543) ne garantit pas
+  // le meme backend entre deux instructions et bloque indefinitely.
+  // Connexion applicative : DATABASE_URL   -> pooler 6543 (transaction)
+  // Operations Prisma CLI                -> DIRECT_URL    -> pooler 5432 (session)
+  directUrl = env("DIRECT_URL")
+}
+
+// ==========================================
+// 1. UTILISATEURS & PROFILS
+// ==========================================
+model User {
+  id                 String   @id @default(cuid())
+  email              String?  @unique
+  passwordHash       String?
+  name               String
+  pseudonym          String?
+  avatar             String?
+  bio                String?
+  country            String?  @default("RDC")
+  city               String?
+  phoneNumber        String?
+  role               String   @default("member") // member, peer_helper, professional, partner_admin, superadmin, moderator, admin
+  memberStatus       String   @default("active_participant") // new_member, active_participant, contributor, ambassador, mentor
+  isAnonymous        Boolean  @default(false)
+  isSuspended        Boolean  @default(false)
+  points             Int      @default(0)
+  completedCampaigns Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  communityMemberships  CommunityMember[]
+  organizationAdmins    OrganizationAdmin[]
+  posts                 Post[]
+  comments              Comment[]
+  reactions             Reaction[]
+  stories               Story[]
+  campaignContributions CampaignContribution[]
+  sentMessages          Message[]              @relation("SentMessages")
+  receivedMessages      Message[]              @relation("ReceivedMessages")
+  reportsCreated        ModerationReport[]     @relation("ReporterUser")
+  reportsHandled        ModerationReport[]     @relation("HandlerUser")
+  auditLogs             AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([createdAt])
+}
+
+// ==========================================
+// 2. ORGANISATIONS PARTENAIRES (ONG, HÔPITAUX)
+// ==========================================
+model Organization {
+  id                  String    @id @default(cuid())
+  name                String
+  acronym             String?
+  domain              String
+  mission             String
+  description         String
+  logo                String?
+  coverImage          String?
+  type                String    @default("ong") // ong, hospital, association, clinic
+  country             String
+  city                String
+  address             String?
+  responsibleName     String
+  responsibleTitle    String?
+  contactEmail        String
+  contactPhone        String
+  status              String    @default("pending") // pending, under_review, approved, suspended
+  subscriptionPlan    String    @default("starter") // starter, growth, enterprise
+  planId              String?
+  quotaCommunitiesMax Int       @default(5)
+  quotaMembersMax     Int       @default(500)
+  quotaCampaignsMax   Int       @default(2)
+  validatedAt         DateTime?
+  slug                String?  @unique
+  // Cycle de vie de l'abonnement, distinct du statut d'approbation.
+  // `paymentStatus` n'est jamais ecrit depuis une requete client publique :
+  // seule une action superadmin explicite ou le seed le renseigne.
+  subscriptionStartedAt DateTime?
+  subscriptionExpiresAt DateTime?
+  paymentStatus         String?  // pending, validated, failed
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Démo 30 jours.
+  demoUsed            Boolean   @default(false)
+  demoStartedAt       DateTime?
+  demoExpiresAt       DateTime?
+
+  // Relations (Politique Restrict: une organisation ayant des cercles ou campagnes ne peut être supprimée aveuglément)
+  admins             OrganizationAdmin[]
+  communities        Community[]
+  campaigns          Campaign[]
+  invitations        Invitation[]
+  invitationRequests InvitationRequest[]
+  invitationLinks    InvitationLink[]
+  subscriptionSnapshots SubscriptionSnapshot[]
+  reports            Report[]
+  plan Plan? @relation(fields: [planId], references: [id])
+
+  @@index([status])
+  @@index([subscriptionPlan])
+  @@index([planId])
+  @@index([demoUsed])
+  @@index([createdAt])
+  @@index([slug])
+}
+
+// ==========================================
+// 3. ADMINS D'ORGANISATION (RBAC PARTENAIRE)
+// ==========================================
+model OrganizationAdmin {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String   @default("admin") // owner, admin, coordinator
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+// ==========================================
+// 4. COMMUNAUTÉS / CERCLES DE SOUTIEN FERMÉS
+// ==========================================
+model Community {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  description    String
+  mission        String
+  rules          String[] @default([])
+  icon           String?  @default("heart")
+  coverImage     String?
+  isPrivate      Boolean  @default(true)
+  category       String?  @default("sante_mentale")
+  organizationId String
+  status         String   @default("active") // active, suspended, archived
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  members            CommunityMember[]
+  posts              Post[]
+  stories            Story[]
+  campaigns          Campaign[]
+  invitations        Invitation[]
+  invitationRequests InvitationRequest[]
+  invitationLinks    InvitationLink[]
+  moderationReports  ModerationReport[]
+  reports            Report[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ==========================================
+// 5. ADHÉSIONS EXPLICITES (CommunityMember)
+// ==========================================
+model CommunityMember {
+  id          String   @id @default(cuid())
+  communityId String
+  userId      String
+  role        String   @default("member") // member, moderator, peer_helper, professional
+  status      String   @default("active") // active, muted, suspended
+  joinedAt    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@index([communityId])
+  @@index([communityId, status])
+  @@index([userId])
+  @@index([role])
+}
+
+// ==========================================
+// 6. PUBLICATIONS DU FIL D'ENTRAIDE (Post)
+// ==========================================
+model Post {
+  id                  String   @id @default(cuid())
+  communityId         String
+  authorId            String?
+  authorName          String
+  authorAvatar        String?
+  type                String   @default("discussion") // discussion, question, announcement, campaign_share, testimony
+  title               String?
+  isAnonymous         Boolean  @default(false)
+  content             String
+  mediaUrl            String? // Rétrocompatibilité
+  mediaType           String?  @default("image") // image, audio, video
+  tags                String[] @default([])
+  reactionsSupport    Int      @default(0)
+  reactionsUnderstand Int      @default(0)
+  reactionsCourage    Int      @default(0)
+  reactionsBravo      Int      @default(0)
+  isPinned            Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  community Community   @relation(fields: [communityId], references: [id], onDelete: Restrict)
+  author    User?       @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  media     PostMedia[]
+  comments  Comment[]
+  reactions Reaction[]
+
+  @@index([communityId, createdAt(sort: Desc)])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+// ==========================================
+// 6bis. MÉDIAS DE PUBLICATION (PostMedia)
+// ==========================================
+model PostMedia {
+  id           String   @id @default(cuid())
+  postId       String
+  type         String // image, video, audio
+  url          String // URL publique directe du média
+  secureUrl    String? // URL HTTPS sécurisée (ex: Cloudinary CDN)
+  publicId     String? // Identifiant d'asset Cloudinary
+  resourceType String? // image, video, raw
+  thumbnailUrl String? // Miniature
+  aspectRatio  String? // Format d'affichage ex: 16:9, 1:1, 4:3
+  position     Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([postId, position])
+}
+
+// ==========================================
+// 7. COMMENTAIRES DE BIENVEILLANCE
+// ==========================================
+model Comment {
+  id           String   @id @default(cuid())
+  postId       String
+  authorId     String?
+  authorName   String
+  authorAvatar String?
+  content      String
+  isAnonymous  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  post   Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+// ==========================================
+// 8. RÉACTIONS ÉMOTIONNELLES DE SOUTIEN
+// ==========================================
+model Reaction {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  type      String // support, understand, courage, bravo
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId, type])
+  @@index([postId])
+  @@index([userId])
+}
+
+// ==========================================
+// 9. RÉCITS & STORIES DE RÉSILIENCE
+// ==========================================
+model Story {
+  id            String    @id @default(cuid())
+  communityId   String
+  authorId      String?
+  authorName    String
+  authorAvatar  String?
+  caption       String
+  mediaUrl      String?
+  mediaType     String    @default("image") // image, audio
+  audioDuration Int?
+  isVoiceNote   Boolean   @default(false)
+  isFeatured    Boolean   @default(false)
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Restrict)
+  author    User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+// ==========================================
+// 10. CAMPAGNES & DÉFIS COLLECTIFS
+// ==========================================
+model Campaign {
+  id                       String    @id @default(cuid())
+  organizationId           String
+  communityId              String
+  title                    String
+  description              String
+  category                 String
+  durationDays             Int       @default(14)
+  startDate                DateTime?
+  endDate                  DateTime?
+  status                   String    @default("draft") // draft, active, completed, paused
+  targetActivitiesCount    Int       @default(5)
+  completedActivitiesCount Int       @default(0)
+  rewardBadge              String?
+  activities               Json?     @default("[]")
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  organization  Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  community     Community              @relation(fields: [communityId], references: [id], onDelete: Restrict)
+  contributions CampaignContribution[]
+  invitationLinks InvitationLink[]
+
+  @@index([organizationId])
+  @@index([communityId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ==========================================
+// 11. CONTRIBUTIONS AUX CAMPAGNES
+// ==========================================
+model CampaignContribution {
+  id            String   @id @default(cuid())
+  campaignId    String
+  userId        String?
+  authorName    String
+  authorAvatar  String?
+  message       String
+  activityTitle String?
+  isAnonymous   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ==========================================
+// 12. CODES D'INVITATION AUX CERCLES
+// ==========================================
+model Invitation {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  organizationId String
+  communityId    String
+  maxUses        Int      @default(1)
+  currentUses    Int      @default(0)
+  status         String   @default("active") // active, expired, revoked
+  expiresAt      DateTime
+  createdBy      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  community    Community    @relation(fields: [communityId], references: [id], onDelete: Restrict)
+
+  @@index([code])
+  @@index([organizationId])
+  @@index([communityId])
+  @@index([status])
+}
+
+// ==========================================
+// 12bis. LIENS D'INVITATION DIRECTS
+// ==========================================
+model InvitationLink {
+  id             String   @id @default(cuid())
+  token          String   @unique
+  type           String   @default("community") // community, campaign
+  targetId       String
+  organizationId String
+  communityId    String?
+  campaignId     String?
+  maxUses        Int      @default(1)
+  currentUses    Int      @default(0)
+  status         String   @default("active") // active, expired, revoked, exhausted
+  expiresAt      DateTime
+  createdBy      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  community    Community?   @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  campaign     Campaign?    @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([token])
+  @@index([organizationId])
+  @@index([communityId])
+  @@index([campaignId])
+  @@index([status])
+}
+
+// ==========================================
+// 13. DEMANDES D'ADHÉSION DE CANDIDATS
+// ==========================================
+model InvitationRequest {
+  id                        String    @id @default(cuid())
+  organizationId            String
+  communityId               String
+  candidateName             String
+  candidateAvatar           String?
+  contactEmail              String
+  contactPhone              String
+  situation                 String
+  motivation                String
+  isFirstRequestOnTulizaana Boolean   @default(true)
+  existingCommunitiesJoined String[]  @default([])
+  status                    String    @default("pending") // pending, accepted, rejected
+  assignedCode              String?
+  dispatchedVia             String? // whatsapp, tulizaana_chat
+  dispatchedAt              DateTime?
+  requestedAt               DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  community    Community    @relation(fields: [communityId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([communityId])
+  @@index([status])
+  @@index([requestedAt])
+}
+
+// ==========================================
+// 14. FILS DE MESSAGERIE PRIVÉE
+// ==========================================
+model MessageThread {
+  id                      String    @id @default(cuid())
+  canonicalParticipantKey String    @unique // Clé unique ordonnée ex: "cuidA:cuidB" garantissant l'unicité bidirectionnelle stricte
+  participantOneId        String
+  participantTwoId        String
+  lastMessage             String?
+  lastMessageAt           DateTime? @default(now())
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  messages Message[]
+
+  @@unique([participantOneId, participantTwoId])
+  @@index([participantOneId])
+  @@index([participantTwoId])
+  @@index([lastMessageAt])
+}
+
+// ==========================================
+// 15. MESSAGES INSTANTANÉS
+// ==========================================
+model Message {
+  id            String   @id @default(cuid())
+  threadId      String
+  senderId      String?
+  receiverId    String?
+  content       String
+  type          String   @default("text") // text, audio, image, video, file
+  mediaUrl      String?
+  audioDuration Int?
+  fileName      String?
+  fileSize      String?
+  isRead        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  thread   MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender   User?         @relation("SentMessages", fields: [senderId], references: [id], onDelete: SetNull)
+  receiver User?         @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: SetNull)
+
+  @@index([threadId, createdAt(sort: Asc)])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+}
+
+// ==========================================
+// 16. SIGNALEMENTS DE MODÉRATION & ALERTES SOS
+// ==========================================
+model ModerationReport {
+  id            String    @id @default(cuid())
+  communityId   String?
+  targetType    String // post, comment, user, story, crisis_sos
+  targetId      String
+  reason        String
+  details       String?
+  status        String    @default("pending") // pending, under_review, resolved, dismissed
+  severity      String    @default("medium") // low, medium, high, critical_sos
+  reportedById  String?
+  actionTakenBy String?
+  actionNotes   String?
+  resolvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  community Community? @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  reporter  User?      @relation("ReporterUser", fields: [reportedById], references: [id], onDelete: SetNull)
+  handler   User?      @relation("HandlerUser", fields: [actionTakenBy], references: [id], onDelete: SetNull)
+
+  @@index([status, severity, createdAt])
+  @@index([communityId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+// ==========================================
+// 17. REGISTRE D'AUDIT SYSTÈME
+// ==========================================
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  userName   String
+  userRole   String
+  action     String
+  resource   String
+  resourceId String?
+  details    String
+  ipAddress  String?  @default("127.0.0.1")
+  status     String   @default("success") // success, warning, denied
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+}
+
+// ==========================================
+// 18. RAPPORTS PARTENAIRES AGREGEES
+// ==========================================
+model Report {
+  id              String   @id @default(cuid())
+  organizationId  String
+  communityId     String?
+  periodStart     DateTime
+  periodEnd       DateTime
+  level           String
+  status          String   @default("generated") // generated, failed
+  data            Json
+  insights        Json
+  recommendations Json
+  generatedBy     String
+  generatedAt     DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  community    Community?   @relation(fields: [communityId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, generatedAt])
+  @@index([organizationId, periodStart, periodEnd])
+  @@index([communityId, generatedAt])
+}
+
+// ==========================================
+// 19. CATALOGUE DES PLANS PARTENAIRES
+// ==========================================
+model Plan {
+  id                  String    @id @default(cuid())
+  code                String    @unique
+  name                String
+  description         String?
+  priceMonthly        Decimal   @db.Decimal(12, 2)
+  currency            String    @default("USD")
+  billingPeriod       String    @default("monthly")
+  communitiesMax      Int
+  membersMax          Int
+  campaignsPerMonth   Int
+  reportLevel         String
+  active              Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  organizations Organization[]
+
+  @@index([active, code])
+}
+
+// ==========================================
+// 19. SNAPSHOT D'ABONNEMENT (HISTORIQUE)
+// ==========================================
+model SubscriptionSnapshot {
+  id                    String    @id @default(cuid())
+  organizationId        String
+  planId                String
+  planCode              String
+  planName              String
+  status                String
+  paymentStatus         String?
+  quotaCommunitiesMax   Int
+  quotaMembersMax       Int
+  quotaCampaignsPerMonth Int
+  startedAt             DateTime?
+  expiresAt             DateTime?
+  cancelledAt           DateTime?
+  createdAt             DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+}
+
+// ==========================================
+// ÉTENDURE ORGANIZATION (DÉMO / PLAN / SNAPSHOT)
+// ==========================================

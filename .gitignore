@@ -1,0 +1,22 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Secrets et variables d'environnement
+.env
+.env.*
+!.env.example
+
+# Dépendances et fichiers générés
+node_modules/
+dist/
+coverage/
+
+# Journaux
+*.log
+npm-debug.log*

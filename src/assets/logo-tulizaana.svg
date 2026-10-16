@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 120" fill="none">
+  <defs>
+    <linearGradient id="logoDotGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0D0" />
+      <stop offset="100%" stop-color="#00B4D8" />
+    </linearGradient>
+  </defs>
+
+  <style>
+    .brand-text {
+      font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      font-weight: 800;
+      font-size: 78px;
+      letter-spacing: -2px;
+      fill: #FFFFFF;
+    }
+  </style>
+
+  <!-- Wordmark "tulizaana" -->
+  <text x="10" y="86" class="brand-text">tulizaana</text>
+
+  <!-- Cyan Accent Dot on the right -->
+  <circle cx="560" cy="74" r="24" fill="url(#logoDotGrad)" />
+</svg>
