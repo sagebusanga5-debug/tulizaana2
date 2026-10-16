@@ -20,3 +20,6 @@ coverage/
 # Journaux
 *.log
 npm-debug.log*
+
+.vercel
+.env*.local
