@@ -51,6 +51,7 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           runtimeCaching: [
             {
@@ -96,6 +97,10 @@ export default defineConfig(() => {
     envPrefix: ['VITE_'],
     server: {
       hmr: false,
+    },
+    build: {
+      minify: false,
+      target: 'es2015',
     },
   };
 });
