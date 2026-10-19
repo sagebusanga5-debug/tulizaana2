@@ -356,7 +356,7 @@ export const InviteGateScreen: React.FC<InviteGateScreenProps> = ({
 
     try {
       const loginRes = await api.auth.login({
-        email: loginIdentifier.trim(),
+        identifier: loginIdentifier.trim(),
         password: loginPassword,
       });
 

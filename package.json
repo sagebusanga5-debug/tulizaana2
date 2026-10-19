@@ -29,7 +29,8 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "db:test": "tsx scripts/test-db-connection.ts",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "create-superadmin": "tsx scripts/create-superadmin.ts"
   },
   "engines": {
     "node": ">=20.0.0",

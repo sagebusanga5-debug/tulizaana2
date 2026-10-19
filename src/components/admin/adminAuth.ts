@@ -39,7 +39,7 @@ export type AdminSignInResult =
  * Le backend pose un cookie HttpOnly ; le frontend ne stocke plus le token.
  */
 export async function signInAdmin(email: string, password: string): Promise<AdminSignInResult> {
-  const response = await api.auth.login({ email: email.trim(), password });
+  const response = await api.auth.login({ identifier: email.trim(), password });
 
   if (!response.success) {
     return {

@@ -225,7 +225,7 @@ export const api = {
 
   // Authentification & Profils
   auth: {
-    login: (credentials: { email: string; password?: string }) =>
+    login: (credentials: { identifier: string; password?: string }) =>
       request<{ user: any }>("/api/auth/login", {
         method: "POST",
         body: JSON.stringify(credentials),
