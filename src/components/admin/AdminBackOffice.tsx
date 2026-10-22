@@ -146,11 +146,13 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   });
 
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Charger les données depuis l'API au montage
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
+      setLoadError(null);
       try {
         const [orgsRes, commsRes, usersRes, campsRes] = await Promise.all([
           api.organizations.list(),
@@ -159,6 +161,8 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           api.campaigns.list(),
         ]);
 
+        console.log('API Responses:', { orgsRes, commsRes, usersRes, campsRes });
+
         setApiData({
           organizations: orgsRes.success ? orgsRes.data : propOrganizations,
           communities: commsRes.success ? commsRes.data : propCommunities,
@@ -166,8 +170,26 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           campaigns: campsRes.success ? campsRes.data : propCampaigns,
           reports: propReports, // Pas d'endpoint admin pour les reports pour l'instant
         });
+
+        if (!orgsRes.success) {
+          console.error('Organizations API error:', orgsRes.error);
+          setLoadError(`Organisations: ${orgsRes.error}`);
+        }
+        if (!commsRes.success) {
+          console.error('Communities API error:', commsRes.error);
+          setLoadError(`Communautés: ${commsRes.error}`);
+        }
+        if (!usersRes.success) {
+          console.error('Users API error:', usersRes.error);
+          setLoadError(`Utilisateurs: ${usersRes.error}`);
+        }
+        if (!campsRes.success) {
+          console.error('Campaigns API error:', campsRes.error);
+          setLoadError(`Campagnes: ${campsRes.error}`);
+        }
       } catch (error) {
         console.error('Erreur de chargement des données:', error);
+        setLoadError(error instanceof Error ? error.message : 'Erreur inconnue');
         // Fallback sur les props en cas d'erreur
         setApiData({
           organizations: propOrganizations,
@@ -562,8 +584,27 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           </div>
         )}
         
+        {/* Indicateur d'erreur */}
+        {!isLoading && loadError && (
+          <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-rose-500/20 flex items-center justify-center">
+              <XCircle className="w-8 h-8 text-rose-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-300">Erreur de chargement</h3>
+              <p className="text-sm text-slate-500 max-w-md">{loadError}</p>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-semibold text-sm hover:bg-cyan-400 transition-colors cursor-pointer"
+            >
+              Recharger la page
+            </button>
+          </div>
+        )}
+        
         {/* Indicateur de données vides */}
-        {!isLoading && organizations.length === 0 && communities.length === 0 && users.length === 0 && (
+        {!isLoading && !loadError && organizations.length === 0 && communities.length === 0 && users.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center">
               <Activity className="w-8 h-8 text-slate-500" />
@@ -587,7 +628,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         {/* ============================================================ */}
         {/* TAB 1: VUE D'ENSEMBLE & ANALYTICS                            */}
         {/* ============================================================ */}
-        {activeTab === 'overview' && !isLoading && (organizations.length > 0 || communities.length > 0 || users.length > 0) && (
+        {activeTab === 'overview' && !isLoading && !loadError && (organizations.length > 0 || communities.length > 0 || users.length > 0) && (
           <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
             
             {/* Top KPI Cards Grid */}
