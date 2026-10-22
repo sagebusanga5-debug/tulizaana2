@@ -156,6 +156,7 @@ import { AdminLoginModal } from './components/admin/AdminLoginModal';
 import { AdminBackOffice } from './components/admin/AdminBackOffice';
 import {
   loadAdminSession,
+  loadAdminSessionFromStorage,
   signOutAdmin,
   type AdminSession,
 } from './components/admin/adminAuth';
@@ -230,8 +231,29 @@ const [showCreateCommunityModal, setShowCreateCommunityModal] = useState<boolean
 
   useEffect(() => {
     let cancelled = false;
+    
+    // D'abord, charger depuis localStorage pour persistance
+    const localSession = loadAdminSessionFromStorage();
+    if (localSession) {
+      setAdminSession(localSession);
+      setShowAdminBackOffice(true);
+    }
+    
+    // Puis vérifier avec le serveur (le token JWT permet ça)
     loadAdminSession().then((session) => {
-      if (!cancelled) setAdminSession(session);
+      if (!cancelled) {
+        if (session) {
+          setAdminSession(session);
+          setShowAdminBackOffice(true);
+        } else {
+          // Si le serveur dit qu'il n'y a pas de session valide, effacer localStorage
+          if (localSession) {
+            signOutAdmin();
+            setAdminSession(null);
+            setShowAdminBackOffice(false);
+          }
+        }
+      }
     });
     return () => {
       cancelled = true;
@@ -256,7 +278,7 @@ const [showCreateCommunityModal, setShowCreateCommunityModal] = useState<boolean
     try {
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     } catch {}
-    signOutAdmin();
+    signOutAdmin(); // Cela efface maintenant localStorage aussi
     setAdminSession(null);
     setShowAdminBackOffice(false);
     clearAppStorage();

@@ -2,12 +2,14 @@
  * Session du Back Office central.
  *
  * Avertissement de securite : ce module ne Decide d'aucune autorisation. Il se
- * contente de.refleeter ce que le serveur a deja valide, afin d'afficher ou de
+ * contente de.refleter ce que le serveur a deja valide, afin d'afficher ou de
  * masquer l'interface. Un indicateur mis a true ici ne donne aucun droit : toute
  * operation reelle est re-verifiee cote serveur par `requireAuth` + `requireRole`,
  * qui relit le role et l'etat de suspension en base a chaque requete.
  */
 import { api } from '../../services/api';
+
+const ADMIN_SESSION_KEY = 'tlz_admin_session';
 
 /**
  * Miroir, uniquement pour l'interface, de la liste serveur des roles
@@ -30,6 +32,41 @@ export function isAdminRole(role: unknown): boolean {
 export type AdminSignInResult =
   | { ok: true; session: AdminSession }
   | { ok: false; error: string };
+
+/**
+ * Charge la session admin depuis localStorage au démarrage
+ */
+export function loadAdminSessionFromStorage(): AdminSession | null {
+  try {
+    const stored = localStorage.getItem(ADMIN_SESSION_KEY);
+    if (!stored) return null;
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sauvegarde la session admin dans localStorage
+ */
+function saveAdminSessionToStorage(session: AdminSession): void {
+  try {
+    localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+  } catch (e) {
+    console.error('Failed to save admin session to localStorage:', e);
+  }
+}
+
+/**
+ * Supprime la session admin de localStorage
+ */
+export function clearAdminSessionFromStorage(): void {
+  try {
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+  } catch (e) {
+    console.error('Failed to clear admin session from localStorage:', e);
+  }
+}
 
 /**
  * Connexion reelle du Back Office : elle passe par `POST /api/auth/login`, le
@@ -62,6 +99,9 @@ export async function signInAdmin(email: string, password: string): Promise<Admi
     };
   }
 
+  // Sauvegarder la session dans localStorage pour persistance
+  saveAdminSessionToStorage(session);
+
   return { ok: true, session };
 }
 
@@ -79,16 +119,22 @@ export async function loadAdminSession(): Promise<AdminSession | null> {
   const user = response.data;
   if (user.isSuspended || !isAdminRole(user.role)) return null;
 
-  return {
+  const session = {
     id: String(user.id ?? ''),
     name: String(user.name ?? user.pseudonym ?? 'Administration'),
     email: String(user.email ?? ''),
     role: String(user.role),
   };
+
+  // Sauvegarder la session dans localStorage
+  saveAdminSessionToStorage(session);
+
+  return session;
 }
 
 /** Invalide la session cote serveur et nettoie l'etat local. */
 export function signOutAdmin(): void {
+  clearAdminSessionFromStorage();
   // L'invalidation effective du cookie est geree par POST /api/auth/logout
   // dans le composant appelant. Cette fonction ne fait que reinitialiser
   // l'etat React du Back Office.
