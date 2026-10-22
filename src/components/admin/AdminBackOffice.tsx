@@ -214,6 +214,14 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   const reports = apiData.reports ?? propReports;
   const posts = propPosts; // Posts pas chargés depuis l'API pour l'instant
 
+  // Garde de sécurité : s'assurer que les données sont des tableaux
+  const safeOrganizations = Array.isArray(organizations) ? organizations : [];
+  const safeCommunities = Array.isArray(communities) ? communities : [];
+  const safeUsers = Array.isArray(users) ? users : [];
+  const safeCampaigns = Array.isArray(campaigns) ? campaigns : [];
+  const safeReports = Array.isArray(reports) ? reports : [];
+  const safePosts = Array.isArray(posts) ? posts : [];
+
   // Modal and deletion states
   const [showAddOrgModal, setShowAddOrgModal] = useState(false);
   const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
@@ -259,24 +267,50 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     };
   }, [notifyRef]);
 
+  // Normaliser les données API pour correspondre à la structure attendue
+  const normalizedOrganizations = safeOrganizations.map(org => ({
+    ...org,
+    name: org.name || '',
+    responsibleName: org.responsibleName || '',
+    country: org.country || '',
+    acronym: org.acronym || '',
+    status: org.status || 'pending',
+  }));
+
+  const normalizedCommunities = safeCommunities.map(comm => ({
+    ...comm,
+    name: comm.name || '',
+    organizationName: comm.organizationName || '',
+    description: comm.description || '',
+    status: comm.status || 'draft',
+  }));
+
+  const normalizedUsers = safeUsers.map(user => ({
+    ...user,
+    name: user.name || '',
+    email: user.email || '',
+    pseudonym: user.pseudonym || '',
+    role: user.role || 'member',
+  }));
+
   // Calculations for global analytics
-  const totalOrganizations = organizations.length;
-  const approvedOrganizations = organizations.filter((o) => o.status === 'approved').length;
-  const pendingOrganizations = organizations.filter((o) => o.status === 'pending' || o.status === 'under_review').length;
-  const suspendedOrganizations = organizations.filter((o) => o.status === 'suspended' || o.status === 'rejected').length;
+  const totalOrganizations = normalizedOrganizations.length;
+  const approvedOrganizations = normalizedOrganizations.filter((o) => o.status === 'approved').length;
+  const pendingOrganizations = normalizedOrganizations.filter((o) => o.status === 'pending' || o.status === 'under_review').length;
+  const suspendedOrganizations = normalizedOrganizations.filter((o) => o.status === 'suspended' || o.status === 'rejected').length;
 
-  const totalCommunities = communities.length;
-  const activeCommunities = communities.filter((c) => c.status === 'active' || c.status === 'approved').length;
-  const pendingCommunities = communities.filter((c) => c.status === 'draft' || c.status === 'pending_review').length;
+  const totalCommunities = normalizedCommunities.length;
+  const activeCommunities = normalizedCommunities.filter((c) => c.status === 'active' || c.status === 'approved').length;
+  const pendingCommunities = normalizedCommunities.filter((c) => c.status === 'draft' || c.status === 'pending_review').length;
 
-  const totalMembers = users.length;
-  const totalPosts = posts.length;
-  const totalCampaigns = campaigns.length;
-  const totalReports = reports.length;
-  const pendingReports = reports.filter((r) => r.status === 'pending').length;
+  const totalMembers = normalizedUsers.length;
+  const totalPosts = safePosts.length;
+  const totalCampaigns = safeCampaigns.length;
+  const totalReports = safeReports.length;
+  const pendingReports = safeReports.filter((r) => r.status === 'pending').length;
 
   // Filtered Organizations
-  const filteredOrganizations = organizations.filter((org) => {
+  const filteredOrganizations = normalizedOrganizations.filter((org) => {
     const matchesStatus =
       orgFilterStatus === 'all'
         ? true
@@ -294,7 +328,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   });
 
   // Filtered Communities
-  const filteredCommunities = communities.filter((comm) => {
+  const filteredCommunities = normalizedCommunities.filter((comm) => {
     const matchesStatus =
       commFilterStatus === 'all'
         ? true
@@ -604,7 +638,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         )}
         
         {/* Indicateur de données vides */}
-        {!isLoading && !loadError && organizations.length === 0 && communities.length === 0 && users.length === 0 && (
+        {!isLoading && !loadError && safeOrganizations.length === 0 && safeCommunities.length === 0 && safeUsers.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center">
               <Activity className="w-8 h-8 text-slate-500" />
@@ -628,7 +662,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         {/* ============================================================ */}
         {/* TAB 1: VUE D'ENSEMBLE & ANALYTICS                            */}
         {/* ============================================================ */}
-        {activeTab === 'overview' && !isLoading && !loadError && (organizations.length > 0 || communities.length > 0 || users.length > 0) && (
+        {activeTab === 'overview' && !isLoading && !loadError && (safeOrganizations.length > 0 || safeCommunities.length > 0 || safeUsers.length > 0) && (
           <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
             
             {/* Top KPI Cards Grid */}
