@@ -268,6 +268,28 @@ const [showCreateCommunityModal, setShowCreateCommunityModal] = useState<boolean
     }
   };
 
+  const handleCloseAdminBackOffice = async () => {
+    setShowAdminBackOffice(false);
+    
+    // Si une session admin existe, charger les données de l'utilisateur et passer à l'interface app
+    if (adminSession) {
+      try {
+        const me = await api.auth.me();
+        if (me.success && me.data) {
+          // Mettre à jour currentUser avec les données admin
+          setCurrentUser(me.data);
+          setAllUsers(prev => [...prev.filter(u => u.id !== me.data.id), me.data]);
+          setViewingProfileUserId(me.data.id);
+          
+          // Passer à l'interface utilisateur
+          setOnboardingStep('app');
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement du profil admin:', error);
+      }
+    }
+  };
+
   const handleAdminLoginSuccess = (session: AdminSession) => {
     setAdminSession(session);
     setShowAdminLoginModal(false);
@@ -1954,7 +1976,7 @@ return updated;
             onDeleteCampaign={handleDeleteCampaignFromAdmin}
             onUpdateUser={handleUpdateUserFromAdmin}
             onUpdateReport={handleUpdateReportFromAdmin}
-            onClose={() => setShowAdminBackOffice(false)}
+            onClose={handleCloseAdminBackOffice}
             onLogoutAdmin={handleAdminLogout}
           />
         )}
@@ -2086,7 +2108,7 @@ return updated;
             onDeleteCampaign={handleDeleteCampaignFromAdmin}
             onUpdateUser={handleUpdateUserFromAdmin}
             onUpdateReport={handleUpdateReportFromAdmin}
-            onClose={() => setShowAdminBackOffice(false)}
+            onClose={handleCloseAdminBackOffice}
             onLogoutAdmin={handleAdminLogout}
           />
         )}
