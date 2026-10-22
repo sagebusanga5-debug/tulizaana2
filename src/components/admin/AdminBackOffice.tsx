@@ -486,10 +486,32 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       {/* 3. MAIN TAB CONTENT AREA */}
       <main className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6">
         
+        {/* Indicateur de données vides */}
+        {organizations.length === 0 && communities.length === 0 && users.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center">
+              <Activity className="w-8 h-8 text-slate-500" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-300">Aucune donnée chargée</h3>
+              <p className="text-sm text-slate-500 max-w-md">
+                Les données du back-office ne sont pas encore synchronisées avec le backend.
+                Veuillez recharger la page ou contacter l'administrateur.
+              </p>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-semibold text-sm hover:bg-cyan-400 transition-colors cursor-pointer"
+            >
+              Recharger la page
+            </button>
+          </div>
+        )}
+        
         {/* ============================================================ */}
         {/* TAB 1: VUE D'ENSEMBLE & ANALYTICS                            */}
         {/* ============================================================ */}
-        {activeTab === 'overview' && (
+        {activeTab === 'overview' && (organizations.length > 0 || communities.length > 0 || users.length > 0) && (
           <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
             
             {/* Top KPI Cards Grid */}
