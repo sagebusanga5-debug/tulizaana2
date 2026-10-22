@@ -11,7 +11,7 @@ import {
   toPublicOrganization,
 } from "./organization-dto.js";
 
-export const SEARCH_TYPES = ["organizations", "communities", "campaigns", "posts", "users"] as const;
+export const SEARCH_TYPES = ["organizations", "communities", "campaigns", "posts", "stories", "comments", "users"] as const;
 export type SearchType = (typeof SEARCH_TYPES)[number];
 
 export interface SearchResult {
@@ -206,6 +206,56 @@ export async function search(
         items: posts.map((post) => ({
           type: "posts", id: post.id, resourceId: post.id, title: post.title || "Publication", description: post.content,
           image: post.mediaUrl, tags: post.tags, context: post.community,
+        })),
+      };
+      return;
+    }
+
+    if (type === "stories") {
+      const where = {
+        community: readableCommunities,
+        OR: [
+          { caption: { contains: query, mode: "insensitive" as const } },
+        ],
+      };
+      const [stories, total] = await Promise.all([
+        prisma.story.findMany({
+          where,
+          select: { id: true, caption: true, mediaUrl: true, mediaType: true, community: { select: { id: true, name: true, slug: true } } },
+          skip, take: limit, orderBy: { createdAt: "desc" },
+        }),
+        prisma.story.count({ where }),
+      ]);
+      results.stories = {
+        total,
+        items: stories.map((story) => ({
+          type: "stories", id: story.id, resourceId: story.id, title: "Récit", description: story.caption,
+          image: story.mediaUrl, context: story.community,
+        })),
+      };
+      return;
+    }
+
+    if (type === "comments") {
+      const where = {
+        post: { community: readableCommunities },
+        OR: [
+          { content: { contains: query, mode: "insensitive" as const } },
+        ],
+      };
+      const [comments, total] = await Promise.all([
+        prisma.comment.findMany({
+          where,
+          select: { id: true, content: true, post: { select: { id: true, title: true, community: { select: { id: true, name: true, slug: true } } } } },
+          skip, take: limit, orderBy: { createdAt: "desc" },
+        }),
+        prisma.comment.count({ where }),
+      ]);
+      results.comments = {
+        total,
+        items: comments.map((comment) => ({
+          type: "comments", id: comment.id, resourceId: comment.id, title: comment.post.title || "Commentaire", description: comment.content,
+          image: null, context: comment.post.community,
         })),
       };
       return;

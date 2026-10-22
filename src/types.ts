@@ -1,7 +1,7 @@
 export type Language = 'en' | 'fr' | 'ar' | 'pt' | 'sw';
 
 /** Resultat minimal et public de la recherche globale serveur. */
-export type SearchResultType = 'organizations' | 'communities' | 'campaigns' | 'posts' | 'users';
+export type SearchResultType = 'organizations' | 'communities' | 'campaigns' | 'posts' | 'stories' | 'comments' | 'users';
 
 export interface SearchResult {
   type: SearchResultType;

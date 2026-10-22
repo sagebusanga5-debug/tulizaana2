@@ -1,4 +1,4 @@
-import React, { FormEvent, useState } from 'react';
+import React, { FormEvent, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Building2,
   ChevronRight,
@@ -8,6 +8,14 @@ import {
   Trophy,
   User,
   Users,
+  BookOpen,
+  MessageSquare,
+  TrendingUp,
+  Clock,
+  X,
+  MapPin,
+  Filter,
+  ChevronDown,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { SearchResponse, SearchResult, SearchResultType } from '../../types';
@@ -21,45 +29,148 @@ const TYPE_META: Record<SearchResultType, { label: string; icon: typeof Search }
   communities: { label: 'Communautés', icon: Users },
   campaigns: { label: 'Campagnes', icon: Trophy },
   posts: { label: 'Publications', icon: FileText },
+  stories: { label: 'Récits', icon: BookOpen },
+  comments: { label: 'Commentaires', icon: MessageSquare },
   users: { label: 'Membres', icon: User },
 };
 
-const SEARCH_ORDER: SearchResultType[] = ['organizations', 'communities', 'campaigns', 'posts', 'users'];
+const SEARCH_ORDER: SearchResultType[] = ['organizations', 'communities', 'campaigns', 'posts', 'stories', 'comments', 'users'];
 
-/** Interface de recherche globale : toutes les donnees viennent exclusivement de api.search(). */
+const SEARCH_HISTORY_KEY = 'tlz_search_history';
+const MAX_HISTORY = 10;
+
+// Mock trends pour la démo - à remplacer par une vraie API
+const MOCK_TRENDS = [
+  { id: '1', tag: 'drépanocytose', count: 234 },
+  { id: '2', tag: 'soutien psychologique', count: 189 },
+  { id: '3', tag: 'Panzi', count: 156 },
+  { id: '4', tag: ' santé mentale', count: 142 },
+  { id: '5', tag: ' résilience', count: 98 },
+];
+
+/** Interface de recherche globale améliorée */
 export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult }) => {
   const [query, setQuery] = useState('');
-  const [submittedQuery, setSubmittedQuery] = useState<string | null>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [isDebouncing, setIsDebouncing] = useState(false);
+  const [selectedType, setSelectedType] = useState<SearchResultType | 'all'>('all');
+  const [sortBy, setSortBy] = useState<'relevance' | 'recent' | 'popular'>('relevance');
   const [response, setResponse] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(true);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const normalizedQuery = query.trim();
-    setSubmittedQuery(normalizedQuery || null);
-    setResponse(null);
-    setError(null);
-
-    if (normalizedQuery.length < 2) return;
-
-    setLoading(true);
-    const result = await api.search(normalizedQuery, { limit: 20 });
-    setLoading(false);
-
-    if (!result.success || !result.data) {
-      setError('La recherche est indisponible pour le moment. Réessayez dans quelques instants.');
-      return;
+  // Charger l'historique de recherche
+  useEffect(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]');
+      setSearchHistory(history);
+    } catch {
+      setSearchHistory([]);
     }
-    setResponse(result.data);
+  }, []);
+
+  // Debounce de la recherche
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+      setIsDebouncing(false);
+    }, 300);
+
+    setIsDebouncing(true);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  // Effectuer la recherche quand le query debounced change
+  useEffect(() => {
+    const performSearch = async () => {
+      if (debouncedQuery.length < 2) {
+        setResponse(null);
+        setError(null);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const types = selectedType === 'all' ? undefined : [selectedType];
+        const result = await api.search(debouncedQuery, { 
+          types: types?.join(','),
+          limit: 20,
+        });
+
+        if (!result.success || !result.data) {
+          setError('La recherche est indisponible pour le moment. Réessayez dans quelques instants.');
+          setResponse(null);
+          return;
+        }
+
+        setResponse(result.data);
+
+        // Ajouter à l'historique si ce n'est pas déjà là
+        if (debouncedQuery.length >= 2 && !searchHistory.includes(debouncedQuery)) {
+          const newHistory = [debouncedQuery, ...searchHistory].slice(0, MAX_HISTORY);
+          setSearchHistory(newHistory);
+          localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(newHistory));
+        }
+      } catch (err) {
+        setError('Erreur lors de la recherche. Veuillez réessayer.');
+        setResponse(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    performSearch();
+  }, [debouncedQuery, selectedType]);
+
+  // Calculer le total de résultats
+  const total = useMemo(() => {
+    if (!response) return 0;
+    return SEARCH_ORDER.reduce((count, type) => count + (response.results[type]?.total || 0), 0);
+  }, [response]);
+
+  // Gérer la soumission du formulaire
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    // La recherche est déjà déclenchée par le debounce
   };
 
-  const total = response
-    ? SEARCH_ORDER.reduce((count, type) => count + (response.results[type]?.total || 0), 0)
-    : 0;
+  // Gérer le clic sur un résultat
+  const handleResultClick = (result: SearchResult) => {
+    onOpenResult(result);
+  };
+
+  // Gérer le clic sur une recherche récente
+  const handleHistoryClick = (historyQuery: string) => {
+    setQuery(historyQuery);
+    setShowHistory(false);
+  };
+
+  // Effacer l'historique
+  const clearHistory = () => {
+    setSearchHistory([]);
+    localStorage.removeItem(SEARCH_HISTORY_KEY);
+  };
+
+  // Gérer le clic sur une tendance
+  const handleTrendClick = (tag: string) => {
+    setQuery(tag);
+    setShowHistory(false);
+  };
+
+  // Mettre en surbrillance le texte recherché
+  const highlightText = (text: string, query: string) => {
+    if (!query || !text) return text;
+    const regex = new RegExp(`(${query})`, 'gi');
+    return text.replace(regex, '<mark class="bg-cyan-500/30 text-white px-0.5 rounded">$1</mark>');
+  };
 
   return (
     <section className="space-y-6 animate-fadeIn pb-10" aria-labelledby="global-search-title">
+      {/* Header avec titre et filtres */}
       <div className="rounded-3xl border border-slate-800 bg-[#182231]/80 p-5 sm:p-8 shadow-xl">
         <div className="max-w-3xl space-y-5">
           <div>
@@ -68,59 +179,182 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult
               Recherche globale
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-slate-400">
-              Retrouvez des organisations, communautés, campagnes, publications et membres accessibles.
+              Retrouvez des organisations, communautés, campagnes, publications, récits, commentaires et membres accessibles.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row" noValidate>
-            <label className="relative flex-1">
-              <span className="sr-only">Rechercher sur Tulizaana</span>
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Ex. soutien, drépanocytose, Panzi…"
-                className="w-full rounded-2xl border border-slate-700 bg-[#0e1626] py-3.5 pl-12 pr-4 text-sm text-white placeholder:text-slate-500 outline-none transition-colors focus:border-cyan-400"
-              />
-            </label>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 py-3 text-sm font-extrabold text-slate-950 transition-colors hover:bg-cyan-400 disabled:cursor-wait disabled:opacity-70"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              Rechercher
-            </button>
-          </form>
+          {/* Barre de recherche avec filtres */}
+          <div className="space-y-3">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row" noValidate>
+              <label className="relative flex-1">
+                <span className="sr-only">Rechercher sur Tulizaana</span>
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <input
+                  value={query}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setShowHistory(false);
+                  }}
+                  placeholder="Ex. soutien, drépanocytose, Panzi…"
+                  className="w-full rounded-2xl border border-slate-700 bg-[#0e1626] py-3.5 pl-12 pr-4 text-sm text-white placeholder:text-slate-500 outline-none transition-colors focus:border-cyan-400"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => setQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-700"
+                  >
+                    <X className="h-4 w-4 text-slate-400" />
+                  </button>
+                )}
+              </label>
+              <button
+                type="submit"
+                disabled={loading || query.length < 2}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 py-3 text-sm font-extrabold text-slate-950 transition-colors hover:bg-cyan-400 disabled:cursor-wait disabled:opacity-70"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                Rechercher
+              </button>
+            </form>
 
-          {submittedQuery !== null && submittedQuery.length < 2 && (
+            {/* Filtres par type */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedType('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  selectedType === 'all'
+                    ? 'bg-cyan-500 text-slate-950'
+                    : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                }`}
+              >
+                Tout
+              </button>
+              {SEARCH_ORDER.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setSelectedType(type)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                    selectedType === type
+                      ? 'bg-cyan-500 text-slate-950'
+                      : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                  }`}
+                >
+                  <TYPE_META[type].icon className="w-3.5 h-3.5" />
+                  {TYPE_META[type].label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tri */}
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-slate-500" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'relevance' | 'recent' | 'popular')}
+                className="bg-transparent text-xs text-slate-400 outline-none cursor-pointer"
+              >
+                <option value="relevance">Pertinence</option>
+                <option value="recent">Plus récents</option>
+                <option value="popular">Plus populaires</option>
+              </select>
+            </div>
+          </div>
+
+          {query.length > 0 && query.length < 2 && (
             <p role="status" className="text-sm text-amber-300">Saisissez au moins 2 caractères pour lancer la recherche.</p>
           )}
           {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
         </div>
       </div>
 
-      {!submittedQuery && !loading && (
-        <div className="rounded-3xl border border-dashed border-slate-700 bg-slate-900/30 p-8 text-center text-sm text-slate-400">
-          Saisissez un mot-clé pour explorer les espaces qui vous sont accessibles.
+      {/* État vide avec suggestions */}
+      {!query && showHistory && (
+        <div className="space-y-6">
+          {/* Recherches récentes */}
+          {searchHistory.length > 0 && (
+            <div className="rounded-3xl border border-slate-800 bg-[#182231]/80 p-5 sm:p-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-cyan-400" />
+                  <h3 className="text-sm font-bold text-slate-200">Recherches récentes</h3>
+                </div>
+                <button
+                  onClick={clearHistory}
+                  className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  Effacer tout
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {searchHistory.map((historyQuery) => (
+                  <button
+                    key={historyQuery}
+                    onClick={() => handleHistoryClick(historyQuery)}
+                    className="px-3 py-1.5 rounded-full bg-slate-800 text-xs text-slate-300 hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-2"
+                  >
+                    <Clock className="w-3 h-3" />
+                    {historyQuery}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tendances */}
+          <div className="rounded-3xl border border-slate-800 bg-[#182231]/80 p-5 sm:p-8">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-4 h-4 text-cyan-400" />
+              <h3 className="text-sm font-bold text-slate-200">Tendances</h3>
+            </div>
+            <div className="space-y-2">
+              {MOCK_TRENDS.map((trend) => (
+                <button
+                  key={trend.id}
+                  onClick={() => handleTrendClick(trend.tag)}
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors group"
+                >
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
+                      {trend.tag}
+                    </p>
+                    <p className="text-xs text-slate-400">{trend.count} publications</p>
+                  </div>
+                  <TrendingUp className="w-4 h-4 text-cyan-400" />
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
+      {/* Indicateur de chargement */}
       {loading && (
         <div className="flex items-center justify-center gap-3 rounded-3xl border border-slate-800 bg-slate-900/40 p-10 text-sm text-slate-400">
           <Loader2 className="h-5 w-5 animate-spin text-cyan-400" /> Recherche en cours…
         </div>
       )}
 
+      {/* Aucun résultat */}
       {response && !loading && total === 0 && (
         <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-8 text-center text-sm text-slate-400">
           Aucun résultat accessible pour « {response.query} ».
+          <p className="mt-2 text-xs text-slate-500">Essayez d'autres mots-clés ou modifiez les filtres.</p>
         </div>
       )}
 
+      {/* Résultats */}
       {response && !loading && total > 0 && (
         <div className="space-y-6">
-          <p className="text-sm text-slate-400">{total} résultat{total > 1 ? 's' : ''} pour « {response.query} »</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-400">{total} résultat{total > 1 ? 's' : ''} pour « {response.query} »</p>
+            {isDebouncing && (
+              <span className="text-xs text-slate-500 flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Mise à jour...
+              </span>
+            )}
+          </div>
           {SEARCH_ORDER.map((type) => {
             const page = response.results[type];
             if (!page || page.items.length === 0) return null;
@@ -137,8 +371,8 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult
                     <button
                       key={`${item.type}-${item.id}`}
                       type="button"
-                      onClick={() => onOpenResult(item)}
-                      className="group flex min-w-0 items-center gap-3 rounded-2xl border border-slate-800 bg-[#111827]/80 p-4 text-left transition-colors hover:border-cyan-500/50 hover:bg-slate-800/80"
+                      onClick={() => handleResultClick(item)}
+                      className="group flex min-w-0 items-center gap-3 rounded-2xl border border-slate-800 bg-[#111827]/80 p-4 text-left transition-all hover:border-cyan-500/50 hover:bg-slate-800/80 hover:shadow-lg hover:shadow-cyan-500/10"
                     >
                       {item.image ? (
                         <img src={item.image} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover" />
@@ -148,9 +382,31 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult
                         </div>
                       )}
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-bold text-white group-hover:text-cyan-300">{item.title}</span>
-                        {item.description && <span className="mt-1 block line-clamp-2 text-xs leading-relaxed text-slate-400">{item.description}</span>}
-                        {item.context && <span className="mt-1 block truncate text-[11px] text-slate-500">{item.context.name}</span>}
+                        <span 
+                          className="block truncate text-sm font-bold text-white group-hover:text-cyan-300"
+                          dangerouslySetInnerHTML={{ __html: highlightText(item.title, response.query) }}
+                        />
+                        {item.description && (
+                          <span 
+                            className="mt-1 block line-clamp-2 text-xs leading-relaxed text-slate-400"
+                            dangerouslySetInnerHTML={{ __html: highlightText(item.description, response.query) }}
+                          />
+                        )}
+                        {item.context && (
+                          <span className="mt-1 block truncate text-[11px] text-slate-500 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {item.context.name}
+                          </span>
+                        )}
+                        {item.tags && item.tags.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {item.tags.slice(0, 3).map((tag) => (
+                              <span key={tag} className="px-2 py-0.5 rounded-full bg-slate-700 text-[10px] text-slate-300">
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </span>
                       <ChevronRight className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-hover:translate-x-0.5 group-hover:text-cyan-400" />
                     </button>
