@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { api } from '../../services/api';
 import {
   ShieldCheck,
   Building2,
@@ -104,12 +105,12 @@ export type AdminTab =
   | 'settings';
 
 export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
-  organizations,
-  communities,
-  users,
-  posts,
-  campaigns,
-  reports,
+  organizations: propOrganizations,
+  communities: propCommunities,
+  users: propUsers,
+  posts: propPosts,
+  campaigns: propCampaigns,
+  reports: propReports,
   language = 'fr',
   adminSession,
   notifyRef,
@@ -128,6 +129,68 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const adminText = t[language || 'fr']?.admin || t.fr.admin;
+
+  // État local pour les données chargées depuis l'API
+  const [apiData, setApiData] = useState<{
+    organizations: Organization[] | null;
+    communities: Community[] | null;
+    users: UserProfile[] | null;
+    campaigns: Campaign[] | null;
+    reports: ModerationReport[] | null;
+  }>({
+    organizations: null,
+    communities: null,
+    users: null,
+    campaigns: null,
+    reports: null,
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Charger les données depuis l'API au montage
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [orgsRes, commsRes, usersRes, campsRes] = await Promise.all([
+          api.organizations.list(),
+          api.communities.list(),
+          api.admin.listUsers(),
+          api.campaigns.list(),
+        ]);
+
+        setApiData({
+          organizations: orgsRes.success ? orgsRes.data : propOrganizations,
+          communities: commsRes.success ? commsRes.data : propCommunities,
+          users: usersRes.success ? usersRes.data : propUsers,
+          campaigns: campsRes.success ? campsRes.data : propCampaigns,
+          reports: propReports, // Pas d'endpoint admin pour les reports pour l'instant
+        });
+      } catch (error) {
+        console.error('Erreur de chargement des données:', error);
+        // Fallback sur les props en cas d'erreur
+        setApiData({
+          organizations: propOrganizations,
+          communities: propCommunities,
+          users: propUsers,
+          campaigns: propCampaigns,
+          reports: propReports,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []); // Une seule fois au montage
+
+  // Utiliser les données API si disponibles, sinon les props
+  const organizations = apiData.organizations ?? propOrganizations;
+  const communities = apiData.communities ?? propCommunities;
+  const users = apiData.users ?? propUsers;
+  const campaigns = apiData.campaigns ?? propCampaigns;
+  const reports = apiData.reports ?? propReports;
+  const posts = propPosts; // Posts pas chargés depuis l'API pour l'instant
 
   // Modal and deletion states
   const [showAddOrgModal, setShowAddOrgModal] = useState(false);
@@ -486,8 +549,21 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       {/* 3. MAIN TAB CONTENT AREA */}
       <main className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6">
         
+        {/* Indicateur de chargement */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center animate-pulse">
+              <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-300">Chargement des données...</h3>
+              <p className="text-sm text-slate-500">Connexion au backend en cours</p>
+            </div>
+          </div>
+        )}
+        
         {/* Indicateur de données vides */}
-        {organizations.length === 0 && communities.length === 0 && users.length === 0 && (
+        {!isLoading && organizations.length === 0 && communities.length === 0 && users.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center">
               <Activity className="w-8 h-8 text-slate-500" />
@@ -511,7 +587,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         {/* ============================================================ */}
         {/* TAB 1: VUE D'ENSEMBLE & ANALYTICS                            */}
         {/* ============================================================ */}
-        {activeTab === 'overview' && (organizations.length > 0 || communities.length > 0 || users.length > 0) && (
+        {activeTab === 'overview' && !isLoading && (organizations.length > 0 || communities.length > 0 || users.length > 0) && (
           <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
             
             {/* Top KPI Cards Grid */}
