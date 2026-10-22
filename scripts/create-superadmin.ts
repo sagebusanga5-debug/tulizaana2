@@ -29,7 +29,9 @@ async function createSuperAdmin() {
     });
 
     if (existing) {
-      console.log(`✅ L'utilisateur ${email} existe déjà avec le rôle : ${existing.role}`);
+      console.log(`✅ L'utilisateur ${email} existe déjà`);
+      console.log(`   Rôle actuel: ${existing.role}`);
+      console.log(`   Suspendu: ${existing.isSuspended}`);
 
       // Mettre à jour le rôle si ce n'est pas superadmin
       if (existing.role !== "superadmin") {
@@ -38,15 +40,26 @@ async function createSuperAdmin() {
           data: { role: "superadmin" },
         });
         console.log(`🔄 Rôle mis à jour à superadmin`);
+      } else {
+        console.log(`✅ Rôle est déjà superadmin`);
       }
 
-      // Mettre à jour le mot de passe si fourni
+      // Mettre à jour le mot de passe
       const passwordHash = await bcrypt.hash(password, 10);
       await prisma.user.update({
         where: { id: existing.id },
         data: { passwordHash },
       });
       console.log(`🔄 Mot de passe mis à jour`);
+
+      // Désuspendre si nécessaire
+      if (existing.isSuspended) {
+        await prisma.user.update({
+          where: { id: existing.id },
+          data: { isSuspended: false },
+        });
+        console.log(`🔄 Compte réactivé (suspendu → actif)`);
+      }
     } else {
       // Créer le compte superadmin
       const passwordHash = await bcrypt.hash(password, 10);

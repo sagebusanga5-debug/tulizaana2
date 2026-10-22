@@ -48,6 +48,12 @@ export async function signInAdmin(email: string, password: string): Promise<Admi
     };
   }
 
+  // Stocker le token JWT depuis la réponse (cross-domain workaround)
+  const token = response.data?.token;
+  if (token) {
+    localStorage.setItem('tlz_auth_token', token);
+  }
+
   const session = await loadAdminSession();
   if (!session) {
     return {

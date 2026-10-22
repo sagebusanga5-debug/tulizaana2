@@ -135,6 +135,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...(options.headers as Record<string, string>),
   };
 
+  // Fallback : utiliser le token JWT depuis localStorage si cookie n'est pas disponible (cross-domain)
+  const token = localStorage.getItem('tlz_auth_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const finalUrl = endpoint.startsWith("http://") || endpoint.startsWith("https://")
     ? endpoint
     : `${API_BASE_URL}${endpoint}`;

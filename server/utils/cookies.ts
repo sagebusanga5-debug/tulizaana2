@@ -33,13 +33,17 @@ export function getAuthCookieOptions(maxAgeMs: number): CookieOptions {
   const secure = resolveCookieSecureFlag();
   const sameSite = resolveCookieSameSite();
 
-  return {
+  const options: CookieOptions = {
     httpOnly: true,
     secure,
     sameSite,
     path: "/",
     maxAge: maxAgeMs,
   };
+
+  // En production, ne pas définir de domaine pour permettre les sous-domaines
+  // Le navigateur acceptera le cookie depuis n'importe quel domaine avec sameSite: none
+  return options;
 }
 
 export function setAuthCookie(res: Response, token: string, maxAgeMs: number = 30 * 24 * 60 * 60 * 1000): void {

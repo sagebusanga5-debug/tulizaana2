@@ -278,6 +278,7 @@ return;
     setAuthCookie(res, token);
 
     sendSuccess(res, {
+      token, // Inclure le token pour support cross-domain (temporaire)
       user: {
         id: user.id,
         name: user.name,
