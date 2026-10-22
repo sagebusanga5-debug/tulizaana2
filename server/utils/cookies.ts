@@ -22,6 +22,10 @@ export function resolveCookieSameSite(): "strict" | "lax" | "none" {
   if (explicit === "lax" || explicit === "none" || explicit === "strict") {
     return explicit;
   }
+  // En production avec domaines différents, utiliser "none" pour cross-domain
+  if (process.env.NODE_ENV === "production") {
+    return "none";
+  }
   return "strict";
 }
 
