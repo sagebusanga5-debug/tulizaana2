@@ -16,9 +16,12 @@ import {
   MapPin,
   Filter,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { SearchResponse, SearchResult, SearchResultType } from '../../types';
+import { SearchCategorySkeleton } from '../common/SkeletonLoading';
 
 interface GlobalSearchViewProps {
   onOpenResult: (result: SearchResult) => void;
@@ -57,6 +60,9 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult
   const [sortBy, setSortBy] = useState<'relevance' | 'recent' | 'popular'>('relevance');
   const [response, setResponse] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(true);
@@ -88,26 +94,34 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult
       if (debouncedQuery.length < 2) {
         setResponse(null);
         setError(null);
+        setPage(1);
+        setHasMore(false);
         return;
       }
 
       setLoading(true);
       setError(null);
+      setPage(1);
 
       try {
-        const types = selectedType === 'all' ? undefined : [selectedType];
         const result = await api.search(debouncedQuery, { 
-          types: types?.join(','),
+          types: selectedType === 'all' ? undefined : [selectedType],
           limit: 20,
+          page: 1,
         });
 
         if (!result.success || !result.data) {
           setError('La recherche est indisponible pour le moment. Réessayez dans quelques instants.');
           setResponse(null);
+          setHasMore(false);
           return;
         }
 
         setResponse(result.data);
+        
+        // Calculer si plus de résultats
+        const totalResults = SEARCH_ORDER.reduce((count, type) => count + (result.data.results[type]?.total || 0), 0);
+        setHasMore(totalResults > 20);
 
         // Ajouter à l'historique si ce n'est pas déjà là
         if (debouncedQuery.length >= 2 && !searchHistory.includes(debouncedQuery)) {
@@ -118,6 +132,7 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult
       } catch (err) {
         setError('Erreur lors de la recherche. Veuillez réessayer.');
         setResponse(null);
+        setHasMore(false);
       } finally {
         setLoading(false);
       }
@@ -125,6 +140,54 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult
 
     performSearch();
   }, [debouncedQuery, selectedType]);
+
+  // Charger plus de résultats
+  const loadMore = async () => {
+    if (!response || loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    const nextPage = page + 1;
+
+    try {
+      const result = await api.search(debouncedQuery, { 
+        types: selectedType === 'all' ? undefined : [selectedType],
+        limit: 20,
+        page: nextPage,
+      });
+
+      if (result.success && result.data) {
+        // Fusionner les résultats
+        const mergedResults = { ...response.results };
+        SEARCH_ORDER.forEach((type) => {
+          if (result.data.results[type]) {
+            if (mergedResults[type]) {
+              mergedResults[type] = {
+                total: result.data.results[type].total,
+                items: [...mergedResults[type].items, ...result.data.results[type].items],
+              };
+            } else {
+              mergedResults[type] = result.data.results[type];
+            }
+          }
+        });
+
+        setResponse({
+          ...response,
+          results: mergedResults,
+        });
+        setPage(nextPage);
+        
+        // Recalculer hasMore
+        const currentTotal = SEARCH_ORDER.reduce((count, type) => count + (mergedResults[type]?.items.length || 0), 0);
+        const totalResults = SEARCH_ORDER.reduce((count, type) => count + (result.data.results[type]?.total || 0), 0);
+        setHasMore(currentTotal < totalResults);
+      }
+    } catch (err) {
+      console.error('Erreur lors du chargement de plus de résultats:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   // Calculer le total de résultats
   const total = useMemo(() => {
@@ -328,10 +391,12 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult
         </div>
       )}
 
-      {/* Indicateur de chargement */}
+      // Indicateur de chargement */}
       {loading && (
-        <div className="flex items-center justify-center gap-3 rounded-3xl border border-slate-800 bg-slate-900/40 p-10 text-sm text-slate-400">
-          <Loader2 className="h-5 w-5 animate-spin text-cyan-400" /> Recherche en cours…
+        <div className="space-y-6">
+          {SEARCH_ORDER.map((type) => (
+            <SearchCategorySkeleton key={type} />
+          ))}
         </div>
       )}
 
@@ -415,6 +480,29 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult
               </div>
             );
           })}
+          
+          {/* Bouton Charger plus */}
+          {hasMore && (
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-slate-800 text-sm font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition-colors disabled:cursor-wait disabled:opacity-70"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Chargement...
+                  </>
+                ) : (
+                  <>
+                    Charger plus de résultats
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </section>
