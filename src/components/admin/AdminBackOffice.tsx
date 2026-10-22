@@ -319,9 +319,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         : org.status === orgFilterStatus;
 
     const matchesSearch =
-      org.name.toLowerCase().includes(orgSearchQuery.toLowerCase()) ||
-      org.responsibleName.toLowerCase().includes(orgSearchQuery.toLowerCase()) ||
-      org.country.toLowerCase().includes(orgSearchQuery.toLowerCase()) ||
+      (org.name || '').toLowerCase().includes(orgSearchQuery.toLowerCase()) ||
+      (org.responsibleName || '').toLowerCase().includes(orgSearchQuery.toLowerCase()) ||
+      (org.country || '').toLowerCase().includes(orgSearchQuery.toLowerCase()) ||
       (org.acronym && org.acronym.toLowerCase().includes(orgSearchQuery.toLowerCase()));
 
     return matchesStatus && matchesSearch;
@@ -337,9 +337,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         : comm.status === commFilterStatus;
 
     const matchesSearch =
-      comm.name.toLowerCase().includes(commSearchQuery.toLowerCase()) ||
-      comm.organizationName.toLowerCase().includes(commSearchQuery.toLowerCase()) ||
-      comm.description.toLowerCase().includes(commSearchQuery.toLowerCase());
+      (comm.name || '').toLowerCase().includes(commSearchQuery.toLowerCase()) ||
+      (comm.organizationName || '').toLowerCase().includes(commSearchQuery.toLowerCase()) ||
+      (comm.description || '').toLowerCase().includes(commSearchQuery.toLowerCase());
 
     return matchesStatus && matchesSearch;
   });
@@ -830,7 +830,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                             )}
                           </div>
                           <div className="text-[11px] text-slate-400">
-                            {org.country} • {org.type.toUpperCase()} • {org.subscriptionPlan.toUpperCase()}
+                            {org.country} • {(org.type || 'N/A').toUpperCase()} • {(org.subscriptionPlan || 'N/A').toUpperCase()}
                           </div>
                         </div>
                       </div>
