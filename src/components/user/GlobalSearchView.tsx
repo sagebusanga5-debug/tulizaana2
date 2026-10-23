@@ -293,20 +293,24 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult
               >
                 Tout
               </button>
-              {SEARCH_ORDER.map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setSelectedType(type)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-                    selectedType === type
-                      ? 'bg-cyan-500 text-slate-950'
-                      : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
-                  }`}
-                >
-                  <TYPE_META[type].icon className="w-3.5 h-3.5" />
-                  {TYPE_META[type].label}
-                </button>
-              ))}
+              {SEARCH_ORDER.map((type) => {
+                const meta = TYPE_META[type];
+                const TypeIcon = meta.icon;
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setSelectedType(type)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                      selectedType === type
+                        ? 'bg-cyan-500 text-slate-950'
+                        : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                    }`}
+                  >
+                    <TypeIcon className="w-3.5 h-3.5" />
+                    {meta.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Tri */}
