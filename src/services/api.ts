@@ -232,7 +232,7 @@ export const api = {
   // Authentification & Profils
   auth: {
     login: (credentials: { identifier: string; password?: string }) =>
-      request<{ user: any }>("/api/auth/login", {
+      request<{ user: any; token?: string }>("/api/auth/login", {
         method: "POST",
         body: JSON.stringify(credentials),
       }),

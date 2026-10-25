@@ -395,7 +395,7 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ onOpenResult
         </div>
       )}
 
-      // Indicateur de chargement */}
+      {/* Indicateur de chargement */}
       {loading && (
         <div className="space-y-6">
           {SEARCH_ORDER.map((type) => (
