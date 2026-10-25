@@ -2351,7 +2351,7 @@ return updated;
           />
 
           {/* User Layout Container (Sidebar + Content) */}
-          <div className="flex-1 flex max-w-7xl w-full mx-auto px-2.5 sm:px-6 lg:px-8 py-3 sm:py-6 pb-24 md:pb-6 gap-6 min-w-0">
+          <div className="flex-1 flex max-w-7xl w-full mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-5 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:pb-6 gap-4 lg:gap-6 min-w-0">
             
             {/* Left User Navigation Sidebar */}
             <UserSidebar

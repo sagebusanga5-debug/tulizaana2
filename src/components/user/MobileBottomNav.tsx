@@ -35,9 +35,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   return (
     <nav
       aria-label="Navigation mobile"
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-[#0a0f18]/95 backdrop-blur-xl border-t border-slate-800/80 px-2 py-2 safe-area-pb shadow-2xl"
+      className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-[#0a0f18]/95 backdrop-blur-xl border-t border-slate-800/60 px-2 py-1.5 safe-area-pb shadow-[0_-10px_40px_-20px_rgba(34,211,238,0.25)]"
     >
-      <div className="flex items-center justify-between max-w-md mx-auto">
+      <div className="flex items-center justify-between max-w-md mx-auto gap-1">
         
         {/* 1. Accueil */}
         <button
