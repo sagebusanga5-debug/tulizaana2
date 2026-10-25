@@ -196,7 +196,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   return (
     <article
       id={`post-${post.id}`}
-      className="w-full bg-[#111827] rounded-3xl border border-slate-800/90 shadow-xl overflow-hidden transition-all hover:border-slate-700/80"
+      className="w-full bg-[#0f1623] rounded-2xl border border-slate-800/60 overflow-hidden transition-colors hover:border-slate-700/70"
     >
       {/* 1. HEADER: Author info & Top Right Controls */}
       <div className="p-4 sm:p-5 pb-3 flex items-start justify-between gap-3">
