@@ -772,8 +772,11 @@ return updated;
       type: newPost.type,
       tags: newPost.tags,
       isAnonymous: newPost.isAnonymous,
-      mediaUrl: newPost.media?.[0]?.url,
-      mediaType: newPost.media?.[0]?.type,
+      media: newPost.media?.map((m: any) => ({
+        type: m.type || "image",
+        url: m.url,
+        secureUrl: m.url,
+      })),
     }).catch((err) => console.warn('Synchronisation publication backend (mode local maintenu):', err));
 
     confetti({

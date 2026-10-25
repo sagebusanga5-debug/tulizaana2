@@ -339,11 +339,32 @@ export const api = {
       isAnonymous?: boolean;
       mediaUrl?: string;
       mediaType?: string;
-    }) =>
-      request<any>("/api/posts", {
+      media?: Array<{ type: string; url: string; secureUrl?: string; publicId?: string }>;
+    }) => {
+      const payload: any = {
+        communityId: postData.communityId,
+        content: postData.content,
+        title: postData.title,
+        type: postData.type,
+        tags: postData.tags,
+        isAnonymous: postData.isAnonymous,
+      };
+      if (Array.isArray(postData.media)) {
+        payload.media = postData.media;
+      } else if (postData.mediaUrl) {
+        payload.media = [
+          {
+            type: postData.mediaType || "image",
+            url: postData.mediaUrl,
+            secureUrl: postData.mediaUrl,
+          },
+        ];
+      }
+      return request<any>("/api/posts", {
         method: "POST",
-        body: JSON.stringify(postData),
-      }),
+        body: JSON.stringify(payload),
+      });
+    },
 
     react: (postId: string, type: "support" | "understand" | "courage" | "bravo") =>
       request<any>(`/api/posts/${postId}/react`, {
