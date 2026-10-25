@@ -327,7 +327,7 @@ export const api = {
       const params = new URLSearchParams();
       if (communityId) params.append("communityId", communityId);
       params.append("page", page.toString());
-      return request<{ posts: any[]; pagination: any }>(`/api/posts?${params.toString()}`);
+      return request<any>(`/api/posts?${params.toString()}`);
     },
 
     create: (postData: {

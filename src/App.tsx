@@ -671,8 +671,16 @@ return updated;
 
     // 5. Récupération des publications depuis l'API
     api.posts.list().then((res) => {
-      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-        const apiPosts = res.data.map((p: any) => ({
+      const data = res.data;
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray((data as any)?.posts)
+        ? (data as any).posts
+        : Array.isArray((res as any)?.posts)
+        ? (res as any).posts
+        : [];
+      if (res.success !== false && list.length > 0) {
+        const apiPosts = list.map((p: any) => ({
           id: p.id,
           authorId: p.authorId || currentUser?.id || 'unknown',
           authorName: p.isAnonymous ? 'Anonyme' : p.authorName || currentUser?.name || 'Membre',
@@ -696,7 +704,6 @@ return updated;
           comments: [],
         }));
         setPosts((prev) => {
-          // Fusionner en évitant les doublons
           const ids = new Set(apiPosts.map((p: Post) => p.id));
           const merged = [...apiPosts, ...prev.filter((p) => !ids.has(p.id))];
           return merged;
@@ -765,19 +772,67 @@ return updated;
     prefetchPostTranslations(newPost, language);
 
     // Persistance asynchrone sur l'API PostgreSQL
-    api.posts.create({
-      communityId: newPost.communityId,
-      content: newPost.content,
-      title: newPost.title,
-      type: newPost.type,
-      tags: newPost.tags,
-      isAnonymous: newPost.isAnonymous,
-      media: newPost.media?.map((m: any) => ({
-        type: m.type || "image",
-        url: m.url,
-        secureUrl: m.url,
-      })),
-    }).catch((err) => console.warn('Synchronisation publication backend (mode local maintenu):', err));
+    api.posts
+      .create({
+        communityId: newPost.communityId,
+        content: newPost.content,
+        title: newPost.title,
+        type: newPost.type,
+        tags: newPost.tags,
+        isAnonymous: newPost.isAnonymous,
+        media: newPost.media?.map((m: any) => ({
+          type: m.type || "image",
+          url: m.url,
+          secureUrl: m.url,
+        })),
+      })
+      .then((res) => {
+        if (!res.success) {
+          console.error('Échec création publication:', res.error);
+        } else {
+          // Recharger les publications pour refléter la persistance
+          api.posts
+            .list()
+            .then((listRes) => {
+              const data = listRes.data;
+              const list = Array.isArray(data)
+                ? data
+                : Array.isArray((data as any)?.posts)
+                ? (data as any).posts
+                : Array.isArray((listRes as any)?.posts)
+                ? (listRes as any).posts
+                : [];
+              if (listRes.success !== false && list.length > 0) {
+                const apiPosts = list.map((p: any) => ({
+                  id: p.id,
+                  authorId: p.authorId || currentUser?.id || 'unknown',
+                  authorName: p.isAnonymous ? 'Anonyme' : p.authorName || currentUser?.name || 'Membre',
+                  authorAvatar: p.isAnonymous
+                    ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+                    : p.authorAvatar || currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                  authorStatus: currentUser?.status || 'member',
+                  isAnonymous: !!p.isAnonymous,
+                  communityId: p.communityId,
+                  communityName: p.communityName,
+                  type: p.type || 'discussion',
+                  title: p.title || '',
+                  content: p.content || '',
+                  media: Array.isArray(p.media)
+                    ? p.media.map((m: any) => ({ id: m.id, type: m.type, url: m.url, thumbnailUrl: m.thumbnailUrl }))
+                    : [],
+                  tags: Array.isArray(p.tags) ? p.tags : [],
+                  timestamp: p.createdAt ? new Date(p.createdAt).toLocaleString('fr-FR') : "À l’instant",
+                  reactions: p.reactions || { support: 0, understand: 0, courage: 0, bravo: 0 },
+                  commentsCount: p.commentsCount || 0,
+                  comments: [],
+                }));
+                setPosts(apiPosts);
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch((err) => console.warn('Synchronisation publication backend (mode local maintenu):', err));
 
     confetti({
       particleCount: 50,
