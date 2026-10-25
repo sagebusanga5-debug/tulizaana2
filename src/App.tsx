@@ -1075,9 +1075,48 @@ return updatedUser;
     };
 
     setCurrentUser(updatedUser);
-setAllUsers((prev) =>
+    setAllUsers((prev) =>
       prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
     );
+
+    // Persistance vers le backend
+    api.auth
+      .updateProfile({
+        name: updatedData.name,
+        pseudonym: updatedData.pseudonym,
+        bio: updatedData.bio,
+        avatar: updatedData.avatar,
+      })
+      .then((res) => {
+        if (res.success && res.data) {
+          const serverUser: any = res.data;
+          setCurrentUser((prev) => ({
+            ...prev,
+            name: serverUser.name || prev.name,
+            pseudonym: serverUser.pseudonym || prev.pseudonym,
+            avatar: serverUser.avatar || prev.avatar,
+            bio: serverUser.bio || prev.bio,
+            isAnonymous: serverUser.isAnonymous !== undefined ? serverUser.isAnonymous : nextAnon,
+          }));
+          setAllUsers((prev) =>
+            prev.map((u) =>
+              u.id === currentUser.id
+                ? {
+                    ...u,
+                    name: serverUser.name || u.name,
+                    pseudonym: serverUser.pseudonym || u.pseudonym,
+                    avatar: serverUser.avatar || u.avatar,
+                    bio: serverUser.bio || u.bio,
+                    isAnonymous: serverUser.isAnonymous !== undefined ? serverUser.isAnonymous : u.isAnonymous,
+                  }
+                : u
+            )
+          );
+        } else {
+          console.error("Échec mise à jour du profil:", res.error);
+        }
+      })
+      .catch((err) => console.error("Erreur mise à jour du profil:", err));
 
     // Synchronize posts so author name and photo reflect the anonymity state across Tulizaana
     setPosts((prev) => {
