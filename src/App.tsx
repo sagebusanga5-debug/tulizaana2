@@ -742,176 +742,186 @@ return updated;
     MOCK_COMMUNITIES[0];
 
   // User Actions
-  const handleCreatePost = (newPostData: Partial<Post>) => {
+  const createPostInFlight = useRef(false);
+  const reactionInFlight = useRef<Record<string, boolean>>({});
+  const commentInFlight = useRef<Record<string, boolean>>({});
+
+  const handleCreatePost = async (newPostData: Partial<Post>) => {
+    if (createPostInFlight.current) return;
+    createPostInFlight.current = true;
+    try {
+    if (!newPostData.content?.trim() && !newPostData.media?.length) {
+      alert('Le contenu de la publication est requis.');
+      return;
+    }
+
     const targetComm = (communities || []).find((c) => c.id === newPostData.communityId) || activeCommunity;
+    const communityId = newPostData.communityId || targetComm?.id || activeCommunity?.id;
+    if (!communityId) {
+      alert('Veuillez sélectionner une communauté.');
+      return;
+    }
+
     const isAnon = Boolean(newPostData.isAnonymous || currentUser.isAnonymous);
-    const newPost: Post = {
-      id: `post-${Date.now()}`,
-      authorId: currentUser.id,
-      authorName: isAnon ? 'Anonyme' : currentUser.name,
-      authorAvatar: isAnon
-        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-        : currentUser.avatar,
-      authorStatus: currentUser.status,
-      isAnonymous: isAnon,
-      communityId: newPostData.communityId || activeCommunity?.id || 'comm-drepano',
-      communityName: newPostData.communityName || targetComm?.name || activeCommunity?.name || 'Communauté',
-      type: newPostData.type || 'question',
-      title: newPostData.title || '',
-      content: newPostData.content || '',
-      media: newPostData.media || [],
-      tags: newPostData.tags || ['#santé', '#résilience'],
-      timestamp: 'À l’instant',
-      reactions: { support: 1, understand: 0, courage: 1, bravo: 0 },
-      commentsCount: 0,
-      comments: [],
-    };
 
-    setPosts([newPost, ...posts]);
-    setCurrentUser((prev) => ({ ...prev, points: prev.points + 25 }));
-    prefetchPostTranslations(newPost, language);
-
-    // Persistance asynchrone sur l'API PostgreSQL
-    api.posts
-      .create({
-        communityId: newPost.communityId,
-        content: newPost.content,
-        title: newPost.title,
-        type: newPost.type,
-        tags: newPost.tags,
-        isAnonymous: newPost.isAnonymous,
-        media: newPost.media?.map((m: any) => ({
-          type: m.type || "image",
+    const res = await api.posts.create({
+        communityId,
+        content: newPostData.content || '',
+        title: newPostData.title,
+        type: newPostData.type || 'question',
+        tags: newPostData.tags,
+        isAnonymous: isAnon,
+        media: newPostData.media?.map((m: any) => ({
+          type: m.type || 'image',
           url: m.url,
           secureUrl: m.url,
         })),
-      })
-      .then((res) => {
-        if (!res.success) {
-          console.error('Échec création publication:', res.error);
-        } else {
-          // Recharger les publications pour refléter la persistance
-          api.posts
-            .list()
-            .then((listRes) => {
-              const data = listRes.data;
-              const list = Array.isArray(data)
-                ? data
-                : Array.isArray((data as any)?.posts)
-                ? (data as any).posts
-                : Array.isArray((listRes as any)?.posts)
-                ? (listRes as any).posts
-                : [];
-              if (listRes.success !== false && list.length > 0) {
-                const apiPosts = list.map((p: any) => ({
-                  id: p.id,
-                  authorId: p.authorId || currentUser?.id || 'unknown',
-                  authorName: p.isAnonymous ? 'Anonyme' : p.authorName || currentUser?.name || 'Membre',
-                  authorAvatar: p.isAnonymous
-                    ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-                    : p.authorAvatar || currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-                  authorStatus: currentUser?.status || 'member',
-                  isAnonymous: !!p.isAnonymous,
-                  communityId: p.communityId,
-                  communityName: p.communityName,
-                  type: p.type || 'discussion',
-                  title: p.title || '',
-                  content: p.content || '',
-                  media: Array.isArray(p.media)
-                    ? p.media.map((m: any) => ({ id: m.id, type: m.type, url: m.url, thumbnailUrl: m.thumbnailUrl }))
-                    : [],
-                  tags: Array.isArray(p.tags) ? p.tags : [],
-                  timestamp: p.createdAt ? new Date(p.createdAt).toLocaleString('fr-FR') : "À l’instant",
-                  reactions: p.reactions || { support: 0, understand: 0, courage: 0, bravo: 0 },
-                  commentsCount: p.commentsCount || 0,
-                  comments: [],
-                }));
-                setPosts(apiPosts);
-              }
-            })
-            .catch(() => {});
-        }
-      })
-      .catch((err) => console.warn('Synchronisation publication backend (mode local maintenu):', err));
+      });
 
-    confetti({
-      particleCount: 50,
-      spread: 70,
-      origin: { y: 0.6 },
-    });
+      if (!res.success) {
+        alert(res.error || 'Échec de la création de la publication.');
+        return;
+      }
+
+      // Recharger les publications pour refléter la persistance
+      try {
+        const listRes = await api.posts.list();
+        const data = listRes.data;
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any)?.posts)
+          ? (data as any).posts
+          : Array.isArray((listRes as any)?.posts)
+          ? (listRes as any).posts
+          : [];
+        if (listRes.success !== false && list.length >= 0) {
+          const apiPosts = list.map((p: any) => ({
+            id: p.id,
+            authorId: p.authorId || currentUser?.id || 'unknown',
+            authorName: p.isAnonymous ? 'Anonyme' : p.authorName || currentUser?.name || 'Membre',
+            authorAvatar: p.isAnonymous
+              ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+              : p.authorAvatar || currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            authorStatus: currentUser?.status || 'member',
+            isAnonymous: !!p.isAnonymous,
+            communityId: p.communityId,
+            communityName: p.communityName,
+            type: p.type || 'discussion',
+            title: p.title || '',
+            content: p.content || '',
+            media: Array.isArray(p.media)
+              ? p.media.map((m: any) => ({ id: m.id, type: m.type, url: m.url, thumbnailUrl: m.thumbnailUrl }))
+              : [],
+            tags: Array.isArray(p.tags) ? p.tags : [],
+            timestamp: p.createdAt ? new Date(p.createdAt).toLocaleString('fr-FR') : "À l’instant",
+            reactions: p.reactions || { support: 0, understand: 0, courage: 0, bravo: 0 },
+            commentsCount: p.commentsCount || 0,
+            comments: [],
+          }));
+          setPosts(apiPosts);
+        }
+      } catch (refreshErr) {
+        console.warn('Rafraîchissement des publications échoué:', refreshErr);
+      }
+
+      // Rafraîchir le profil réel si possible
+      try {
+        const meRes = await api.auth.me();
+        if (meRes.success && meRes.data) {
+          setCurrentUser((prev) => ({ ...prev, ...(meRes.data.user || meRes.data) }));
+        }
+      } catch (e) {
+        console.warn('Rafraîchissement profil échoué:', e);
+      }
+
+      confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+    } catch (err) {
+      console.error('Échec création publication:', err);
+      alert('Erreur lors de la création de la publication.');
+    } finally {
+      createPostInFlight.current = false;
+    }
   };
 
-  const handlePostReaction = (postId: string, reactionType: 'support' | 'understand' | 'courage' | 'bravo') => {
-    // Appel asynchrone API
-    api.posts.react(postId, reactionType).catch(() => {});
-
-    setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id === postId) {
+  const handlePostReaction = async (postId: string, reactionType: 'support' | 'understand' | 'courage' | 'bravo') => {
+    if (reactionInFlight.current[postId]) return;
+    reactionInFlight.current[postId] = true;
+    try {
+      const res = await api.posts.react(postId, reactionType);
+      if (!res.success) {
+        alert(res.error || 'Échec de la réaction.');
+        return;
+      }
+      const toggled = (res.data as any)?.toggled;
+      const type = (res.data as any)?.type || reactionType;
+      setPosts((prev) =>
+        prev.map((p) => {
+          if (p.id !== postId) return p;
           const currentReactions = { ...p.reactions };
-          const previousReaction = p.userReaction;
-
-          if (previousReaction === reactionType) {
-            // Toggle off
-            currentReactions[reactionType] = Math.max(0, currentReactions[reactionType] - 1);
+          if (toggled === 'removed') {
+            currentReactions[type] = Math.max(0, (currentReactions[type] || 0) - 1);
             return { ...p, reactions: currentReactions, userReaction: undefined };
-          } else {
-            // If already had another reaction, decrement it
-            if (previousReaction) {
-              currentReactions[previousReaction] = Math.max(0, currentReactions[previousReaction] - 1);
-            }
-            currentReactions[reactionType] = (currentReactions[reactionType] || 0) + 1;
-
-            // Trigger slight haptic / visual celebration for supportive reactions
-            confetti({
-              particleCount: 20,
-              spread: 40,
-              origin: { y: 0.7 },
-            });
-
-            return { ...p, reactions: currentReactions, userReaction: reactionType };
           }
-        }
-        return p;
-      })
-    );
+          // added
+          const previousReaction = p.userReaction;
+          if (previousReaction && previousReaction !== type) {
+            currentReactions[previousReaction] = Math.max(0, (currentReactions[previousReaction] || 0) - 1);
+          }
+          currentReactions[type] = (currentReactions[type] || 0) + 1;
+          confetti({ particleCount: 20, spread: 40, origin: { y: 0.7 } });
+          return { ...p, reactions: currentReactions, userReaction: type };
+        })
+      );
+    } catch (err) {
+      console.error('Erreur réaction:', err);
+      alert('Erreur lors de l’enregistrement de la réaction.');
+    } finally {
+      reactionInFlight.current[postId] = false;
+    }
   };
 
-  const handleAddComment = (postId: string, content: string, isAnonymous?: boolean) => {
-    const isAnon = Boolean(isAnonymous || currentUser.isAnonymous);
-
-    // Enregistrement asynchrone sur l'API
-    api.posts.comment(postId, content, isAnon).catch(() => {});
-
-    setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id === postId) {
+  const handleAddComment = async (postId: string, content: string, isAnonymous?: boolean) => {
+    if (commentInFlight.current[postId]) return;
+    commentInFlight.current[postId] = true;
+    try {
+      const isAnon = Boolean(isAnonymous || currentUser.isAnonymous);
+      const res = await api.posts.comment(postId, content, isAnon);
+      if (!res.success) {
+        alert(res.error || 'Échec de l’ajout du commentaire.');
+        return;
+      }
+      const persisted = (res.data as any)?.comment || res.data;
+      setPosts((prev) =>
+        prev.map((p) => {
+          if (p.id !== postId) return p;
           const newComment = {
-            id: `comm-${Date.now()}`,
+            id: persisted?.id || `comm-${Date.now()}`,
             postId,
-            authorId: currentUser.id,
-            authorName: isAnon ? 'Anonyme' : currentUser.name,
+            authorId: persisted?.authorId || currentUser.id,
+            authorName: isAnon ? 'Anonyme' : (persisted?.authorName || currentUser.name),
             authorAvatar: isAnon
               ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-              : currentUser.avatar,
+              : (persisted?.authorAvatar || currentUser.avatar),
             authorStatus: currentUser.status,
             isAnonymous: isAnon,
-            content,
-            timestamp: 'À l’instant',
-            reactions: { support: 1, understand: 0, courage: 0, bravo: 0 },
+            content: persisted?.content || content,
+            timestamp: persisted?.createdAt ? new Date(persisted.createdAt).toLocaleString('fr-FR') : 'À l’instant',
+            reactions: persisted?.reactions || { support: 0, understand: 0, courage: 0, bravo: 0 },
           };
-
+          const exists = p.comments.some((c: any) => c.id === newComment.id);
           return {
             ...p,
-            commentsCount: p.commentsCount + 1,
-            comments: [...p.comments, newComment],
+            commentsCount: exists ? p.commentsCount : p.commentsCount + 1,
+            comments: exists ? p.comments : [...p.comments, newComment],
           };
-        }
-        return p;
-      })
-    );
-
-    setCurrentUser((prev) => ({ ...prev, points: prev.points + 10 }));
+        })
+      );
+    } catch (err) {
+      console.error('Erreur commentaire:', err);
+      alert('Erreur lors de l’ajout du commentaire.');
+    } finally {
+      commentInFlight.current[postId] = false;
+    }
   };
 
   const handleCreateStory = (newStory: Partial<StoryTestimonial>) => {
