@@ -81,7 +81,7 @@ export const OrganizationValidationModal: React.FC<OrganizationValidationModalPr
 
       const body = `Bonjour ${organization.responsibleName},
 
-Nous avons le grand plaisir de vous annoncer que le dossier d'agrément de votre organisation "${organization.name}" (${organization.acronym || organization.type.toUpperCase()}) a été officiellement examiné et validé par l'équipe centrale de Tulizaana.
+Nous avons le grand plaisir de vous annoncer que le dossier d'agrément de votre organisation "${organization.name}" (${organization.acronym || (organization.type || '').toUpperCase()}) a été officiellement examiné et validé par l'équipe centrale de Tulizaana.
 
 Votre profil organisation est désormais approuvé pour la création et l'animation de vos cercles de parole sécurisés, la distribution des clés d'accès aux bénéficiaires et le déploiement de vos parcours de résilience.
 
@@ -91,7 +91,7 @@ ${code}
 ══════════════════════════════════════════════════════
 
 Détails de votre souscription validée :
-• Formule : ${organization.subscriptionPlan.toUpperCase()}
+• Formule : ${(organization.subscriptionPlan || '').toUpperCase()}
 • Quota de communautés : jusqu'à ${organization.quotaCommunities?.max || 3} cercles fermés
 • Capacité de membres : jusqu'à ${organization.quotaMembers?.max || 1000} bénéficiaires
 • Campagnes de résilience : jusqu'à ${organization.quotaCampaignsPerMonth?.max || 5} par mois
