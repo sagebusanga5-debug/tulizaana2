@@ -761,6 +761,11 @@ return updated;
       alert('Veuillez sélectionner une communauté.');
       return;
     }
+    const knownComm = (communities || []).find((c: any) => c.id === communityId);
+    if (!knownComm && (communities || []).length > 0) {
+      alert('La communauté sélectionnée est invalide.');
+      return;
+    }
 
     const isAnon = Boolean(newPostData.isAnonymous || currentUser.isAnonymous);
 
