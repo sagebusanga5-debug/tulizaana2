@@ -1881,11 +1881,25 @@ return updated;
     });
   };
 
-  const handleCreateInvitationRequest = (newRequest: MemberInvitationRequest) => {
-    setInvitationRequests((prev) => {
-      const updated = [newRequest, ...prev];
-return updated;
-    });
+  const handleCreateInvitationRequest = async (newRequest: MemberInvitationRequest) => {
+    try {
+      const res = await api.invitations.request({
+        candidateName: newRequest.candidateName,
+        contactEmail: (newRequest as any).contactEmail,
+        contactPhone: newRequest.contactPhone,
+        situation: newRequest.situation,
+        motivation: newRequest.motivation,
+        communityId: newRequest.communityId,
+      });
+      if (!res.success) {
+        alert(res.error || 'Échec de la demande.');
+        return;
+      }
+      setInvitationRequests((prev) => [{ ...newRequest, id: (res.data as any)?.requestId || newRequest.id }, ...prev]);
+    } catch (err) {
+      console.error('Erreur demande invitation:', err);
+      alert('Erreur lors de la demande.');
+    }
   };
 
   /**
