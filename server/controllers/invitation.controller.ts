@@ -179,8 +179,8 @@ export async function generateInvitation(req: AuthenticatedRequest, res: Respons
       return;
     }
 
-    // Génération d'un code lisible et unique ex: TULIZ-8F2A
-    const randomHex = crypto.randomBytes(3).toString("hex").toUpperCase();
+    // Génération d'un code à haute entropie, non devinable : 12 octets (24 hex)
+    const randomHex = crypto.randomBytes(12).toString("hex").toUpperCase();
     const cleanPrefix =
       typeof prefix === "string" && /^[A-Z0-9-]{3,16}$/i.test(prefix.trim())
         ? prefix.trim().toUpperCase()

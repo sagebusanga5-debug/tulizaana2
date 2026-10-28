@@ -1368,22 +1368,29 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           initialTab={selectedOrgInitialTab}
           onClose={() => setSelectedOrgForValidation(null)}
           onValidateAndSendEmail={(orgId, code) => {
-            onUpdateOrganization(orgId, {
-              status: 'approved',
-              isVerified: true,
-              invitationCode: code,
-              validatedAt: new Date().toISOString(),
-              validationEmailSentAt: new Date().toISOString(),
-            });
-            handleRecordLog(
-              'Validation Organisation',
-              'Organisations',
-              `Organisation « ${selectedOrgForValidation.name} » approuvée avec attribution du code ${code}`,
-              'success',
-              orgId
-            );
-            setSelectedOrgForValidation(null);
-            showToast(`Organisation « ${selectedOrgForValidation.name} » approuvée avec succès !`);
+            (async () => {
+              try {
+                await api.admin.updateOrganizationStatus(orgId, { status: 'approved' });
+              } catch (e) {
+                console.error('Validation org API:', e);
+              }
+              onUpdateOrganization(orgId, {
+                status: 'approved',
+                isVerified: true,
+                invitationCode: code,
+                validatedAt: new Date().toISOString(),
+                validationEmailSentAt: new Date().toISOString(),
+              });
+              handleRecordLog(
+                'Validation Organisation',
+                'Organisations',
+                `Organisation « ${selectedOrgForValidation.name} » approuvée avec attribution du code ${code}`,
+                'success',
+                orgId
+              );
+              setSelectedOrgForValidation(null);
+              showToast(`Organisation « ${selectedOrgForValidation.name} » approuvée avec succès !`);
+            })();
           }}
           onPutUnderReview={(orgId) => {
             onUpdateOrganization(orgId, { status: 'under_review' });
