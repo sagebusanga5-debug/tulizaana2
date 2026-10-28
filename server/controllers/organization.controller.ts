@@ -42,6 +42,8 @@ export async function listOrganizations(req: AuthenticatedRequest, res: Response
     // Si non-admin, on ne renvoie que les organisations approuvees
     const statusFilter = isSuperAdmin && status && typeof status === "string"
       ? status
+      : isSuperAdmin
+      ? undefined
       : "approved";
 
     const organizations = await prisma.organization.findMany({
