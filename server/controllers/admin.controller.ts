@@ -12,6 +12,7 @@ import { AuthenticatedRequest } from "../middleware/auth.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { isKnownPartnerPlan } from "../../shared/partner-plans.js";
 import { Decimal } from "@prisma/client/runtime/library.js";
+import { sendValidationEmail } from "../services/email.service.js";
 
 /** Roles acceptes par la validation d'une ressource. */
 const ORGANIZATION_STATUSES = new Set([
@@ -288,7 +289,7 @@ export async function updateOrganizationStatus(
   try {
     const existing = await prisma.organization.findUnique({
       where: { id: req.params.id },
-      select: { id: true, name: true, status: true },
+      select: { id: true, name: true, status: true, contactEmail: true },
     });
     if (!existing) {
       sendError(res, "Organisation introuvable.", 404);
@@ -332,6 +333,14 @@ export async function updateOrganizationStatus(
       details: `${existing.name} : ${existing.status} -> ${status}`,
       ipAddress: req.ip,
     });
+
+    if (typeof invitationCode === "string" && invitationCode.trim() && existing.contactEmail) {
+      await sendValidationEmail({
+        to: existing.contactEmail,
+        subject: `Validation de votre organisation ${existing.name} - Code d'invitation`,
+        body: `Votre organisation ${existing.name} a ete validee. Code d'invitation: ${invitationCode.trim()}`,
+      });
+    }
 
     sendSuccess(res, updated);
   } catch {
