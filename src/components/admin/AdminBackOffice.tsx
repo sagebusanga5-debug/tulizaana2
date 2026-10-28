@@ -1370,7 +1370,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           onValidateAndSendEmail={(orgId, code) => {
             (async () => {
               try {
-                await api.admin.updateOrganizationStatus(orgId, { status: 'approved' });
+                await api.admin.updateOrganizationStatus(orgId, { status: 'approved', invitationCode: code });
               } catch (e) {
                 console.error('Validation org API:', e);
               }

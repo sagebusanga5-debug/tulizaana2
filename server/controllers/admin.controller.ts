@@ -273,7 +273,7 @@ export async function updateOrganizationStatus(
   }
 
   const actor = currentActor(req);
-  const { status, subscriptionPlan } = req.body ?? {};
+  const { status, subscriptionPlan, invitationCode } = req.body ?? {};
 
   if (typeof status !== "string" || !ORGANIZATION_STATUSES.has(status)) {
     sendError(res, "Statut d'organisation invalide.", 400);
@@ -305,13 +305,16 @@ export async function updateOrganizationStatus(
     const updated = await prisma.organization.update({
       where: { id: req.params.id },
       data: {
-        status,
-        ...(typeof subscriptionPlan === "string" ? { subscriptionPlan } : {}),
-        ...(typeof subscriptionPlan === "string" || isFreshApproval
-          ? { paymentStatus: "pending", subscriptionStartedAt: null }
-          : {}),
-        ...(isFreshApproval ? { validatedAt: new Date() } : {}),
-      },
+         status,
+         ...(typeof subscriptionPlan === "string" ? { subscriptionPlan } : {}),
+         ...(typeof subscriptionPlan === "string" || isFreshApproval
+           ? { paymentStatus: "pending", subscriptionStartedAt: null }
+           : {}),
+         ...(isFreshApproval ? { validatedAt: new Date(), isVerified: true } : {}),
+         ...(typeof invitationCode === "string" && invitationCode.trim()
+           ? { invitationCode: invitationCode.trim() }
+           : {}),
+       },
       select: {
         id: true,
         name: true,

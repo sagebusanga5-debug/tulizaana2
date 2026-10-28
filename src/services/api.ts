@@ -581,7 +581,7 @@ export const api = {
 
     updateOrganizationStatus: (
       orgId: string,
-      updates: { status: string; subscriptionPlan?: string }
+      updates: { status: string; subscriptionPlan?: string; invitationCode?: string }
     ) =>
       request<any>(`/api/admin/organizations/${encodeURIComponent(orgId)}/status`, {
         method: "PUT",
