@@ -331,9 +331,24 @@ export async function updateOrganizationStatus(
       ipAddress: req.ip,
     });
 
-    // Generer un code d'invitation reel (persiste en base) pour le premier cercle actif
+    // Obtenir ou creer un cercle actif pour l'organisation (necessaire pour le code d'invitation)
+    let activeCommunity = existing.communities?.find((c: any) => c.status === "active");
+    if (isFreshApproval && !activeCommunity) {
+      const created = await prisma.community.create({
+        data: {
+          name: `${existing.name} - Cercle principal`,
+          slug: `${existing.id.slice(0, 8)}-principal`,
+          description: "Cercle principal de l'organisation",
+          mission: "Accompagnement et entraide",
+          organization: { connect: { id: existing.id } },
+          status: "active",
+          isPrivate: false,
+        },
+      });
+      activeCommunity = created as any;
+    }
+
     let generatedCode: string | null = null;
-    const activeCommunity = existing.communities?.find((c: any) => c.status === "active");
     if (isFreshApproval && activeCommunity) {
       const randomHex = (await import("crypto")).randomBytes(12).toString("hex").toUpperCase();
       const code = `TLZ-${randomHex}`;
@@ -342,7 +357,7 @@ export async function updateOrganizationStatus(
       await prisma.invitation.create({
         data: {
           code,
-          communityId: activeCommunity.id,
+          communityId: (activeCommunity as any).id,
           organizationId: existing.id,
           maxUses: 1,
           currentUses: 0,
