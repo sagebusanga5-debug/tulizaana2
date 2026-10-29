@@ -289,7 +289,7 @@ export async function updateOrganizationStatus(
   try {
     const existing = await prisma.organization.findUnique({
       where: { id: req.params.id },
-      select: { id: true, name: true, status: true, contactEmail: true },
+      select: { id: true, name: true, status: true, contactEmail: true, communities: { select: { id: true, status: true }, take: 5 } },
     });
     if (!existing) {
       sendError(res, "Organisation introuvable.", 404);
@@ -331,11 +331,34 @@ export async function updateOrganizationStatus(
       ipAddress: req.ip,
     });
 
-    if (typeof invitationCode === "string" && invitationCode.trim() && existing.contactEmail) {
+    // Generer un code d'invitation reel (persiste en base) pour le premier cercle actif
+    let generatedCode: string | null = null;
+    const activeCommunity = existing.communities?.find((c: any) => c.status === "active");
+    if (isFreshApproval && activeCommunity) {
+      const randomHex = (await import("crypto")).randomBytes(12).toString("hex").toUpperCase();
+      const code = `TLZ-${randomHex}`;
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      await prisma.invitation.create({
+        data: {
+          code,
+          communityId: activeCommunity.id,
+          organizationId: existing.id,
+          maxUses: 1,
+          currentUses: 0,
+          status: "active",
+          expiresAt,
+          createdBy: req.user!.id,
+        },
+      });
+      generatedCode = code;
+    }
+
+    if (generatedCode && existing.contactEmail) {
       await sendValidationEmail({
         to: existing.contactEmail,
         subject: `Validation de votre organisation ${existing.name} - Code d'invitation`,
-        body: `Votre organisation ${existing.name} a ete validee. Code d'invitation: ${invitationCode.trim()}`,
+        body: `Votre organisation ${existing.name} a ete validee. Code d'invitation: ${generatedCode}`,
       });
     }
 
