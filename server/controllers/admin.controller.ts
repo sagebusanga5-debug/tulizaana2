@@ -311,7 +311,7 @@ export async function updateOrganizationStatus(
          ...(typeof subscriptionPlan === "string" || isFreshApproval
            ? { paymentStatus: "pending", subscriptionStartedAt: null }
            : {}),
-         ...(isFreshApproval ? { validatedAt: new Date(), isVerified: true } : {}),
+         ...(isFreshApproval ? { validatedAt: new Date() } : {}),
        },
       select: {
         id: true,
