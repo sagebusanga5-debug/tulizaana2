@@ -312,9 +312,6 @@ export async function updateOrganizationStatus(
            ? { paymentStatus: "pending", subscriptionStartedAt: null }
            : {}),
          ...(isFreshApproval ? { validatedAt: new Date(), isVerified: true } : {}),
-         ...(typeof invitationCode === "string" && invitationCode.trim()
-           ? { invitationCode: invitationCode.trim() }
-           : {}),
        },
       select: {
         id: true,
