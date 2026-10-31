@@ -562,7 +562,17 @@ export async function deleteCommunity(req: AuthenticatedRequest, res: Response):
       select: {
         id: true,
         name: true,
-        _count: { select: { members: true, posts: true, campaigns: true } },
+        _count: {
+          select: {
+            members: true,
+            posts: true,
+            campaigns: true,
+            stories: true,
+            invitations: true,
+            invitationRequests: true,
+            invitationLinks: true,
+          },
+        },
       },
     });
     if (!existing) {
@@ -570,12 +580,12 @@ export async function deleteCommunity(req: AuthenticatedRequest, res: Response):
       return;
     }
 
-    const { members, posts, campaigns } = existing._count;
-    if (members > 0 || posts > 0 || campaigns > 0) {
+    const { members, posts, campaigns, stories, invitations, invitationRequests, invitationLinks } = existing._count;
+    const total = members + posts + campaigns + stories + invitations + invitationRequests + invitationLinks;
+    if (total > 0) {
       sendError(
         res,
-        `Ce cercle contient ${members} membre(s), ${posts} publication(s) et ${campaigns} campagne(s). ` +
-          "Archivez-le plutot que de le supprimer definitivement.",
+        `Ce cercle contient ${members} membre(s), ${posts} publication(s), ${campaigns} campagne(s), ${stories} histoire(s), ${invitations} invitation(s), ${invitationRequests} demande(s) et ${invitationLinks} lien(s) d'invitation. Archivez-le plutot que de le supprimer definitivement.`,
         409
       );
       return;
@@ -593,7 +603,8 @@ export async function deleteCommunity(req: AuthenticatedRequest, res: Response):
     });
 
     sendSuccess(res, { id: existing.id, deleted: true });
-  } catch {
+  } catch (err) {
+    console.error("Erreur deleteCommunity:", err);
     sendError(res, "Impossible de supprimer le cercle.", 500);
   }
 }
