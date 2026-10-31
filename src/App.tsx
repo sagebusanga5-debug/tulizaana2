@@ -2279,6 +2279,7 @@ return updated;
               setPartnerBlockedBy(null);
               setIsLoggedIn(true);
               setIsPartnerAuthenticated(true);
+              setInterfaceMode('partner');
               setActivePartnerTab('profile');
               try {
                 localStorage.setItem(STORAGE_KEYS.interfaceMode, 'partner');
