@@ -136,34 +136,8 @@ export const InviteGateModal: React.FC<InviteGateModalProps> = ({
                 <span>Règle absolue : Inscription sur invitation uniquement</span>
               </div>
               <p className="leading-relaxed">
-                Sans code d’invitation valide émis par une ONG partenaire, aucun compte ne peut être créé. Vous pouvez tester avec l'un des codes de démonstration ci-dessous :
+                Sans code d’invitation valide émis par une ONG partenaire, aucun compte ne peut être créé.
               </p>
-            </div>
-
-            {/* Quick Demo Codes buttons */}
-            <div className="space-y-2">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                Codes de démonstration actifs :
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {invitations
-                  .filter((i) => i.status === 'active')
-                  .map((inv) => (
-                    <button
-                      key={inv.id}
-                      type="button"
-                      onClick={() => setEnteredCode(inv.code)}
-                      className="p-3 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-left transition-colors cursor-pointer group"
-                    >
-                      <div className="text-xs font-bold text-cyan-400 font-mono group-hover:text-cyan-300">
-                        {inv.code}
-                      </div>
-                      <div className="text-[11px] text-slate-300 truncate">
-                        {inv.communityName}
-                      </div>
-                    </button>
-                  ))}
-              </div>
             </div>
 
             {/* Input Code */}

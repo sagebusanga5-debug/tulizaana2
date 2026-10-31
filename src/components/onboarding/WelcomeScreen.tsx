@@ -3,6 +3,7 @@ import {
   Users,
   Building2,
   ArrowRight,
+  ArrowLeft,
   Globe,
   KeyRound,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 }) => {
   const [showFinalization, setShowFinalization] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
+  const [showPartnerPortal, setShowPartnerPortal] = useState(false);
 
   const currentLang = t[language]?.welcome || t.fr.welcome;
   const commonLang = t[language]?.common || t.fr.common;
@@ -49,9 +51,62 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       <PartnerRegistrationForm
         onSuccess={() => {
           setShowRegistration(false);
+          onSelectRole('partner');
         }}
         onCancel={() => setShowRegistration(false)}
       />
+    );
+  }
+
+  if (showPartnerPortal) {
+    return (
+      <div className="min-h-screen bg-[#070b12] text-slate-100 flex flex-col">
+        <div className="flex-1 max-w-xl w-full mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <button
+              type="button"
+              onClick={() => setShowPartnerPortal(false)}
+              className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Retour</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-purple-400" />
+              <span className="text-sm font-bold text-purple-400">Portail partenaire</span>
+            </div>
+          </div>
+
+          <div className="rounded-3xl bg-[#111422] border border-purple-500/30 p-6 sm:p-8 shadow-2xl">
+            <h1 className="text-2xl font-bold text-white mb-2">Accéder au portail partenaire</h1>
+            <p className="text-sm text-slate-300 mb-8">
+              Choisissez votre situation pour accéder à votre espace organisation.
+            </p>
+
+            <button
+              onClick={() => {
+                setShowPartnerPortal(false);
+                setShowFinalization(true);
+              }}
+              className="w-full py-4 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer border border-purple-500/30 mb-4"
+            >
+              <KeyRound className="w-5 h-5" />
+              <span>J'ai déjà un code d'invitation</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setShowPartnerPortal(false);
+                setShowRegistration(true);
+              }}
+              className="w-full py-4 px-6 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer shadow-lg shadow-purple-500/20"
+            >
+              <ArrowRight className="w-5 h-5" />
+              <span>Demander une invitation (nouvelle organisation)</span>
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -144,7 +199,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
           {/* Card 2: Espace Partenaire ONG */}
           <div
-            onClick={() => onSelectRole('partner')}
+            onClick={() => setShowPartnerPortal(true)}
             className="rounded-2xl bg-[#131625] border border-purple-500/30 hover:border-purple-400 p-5 sm:p-6 flex flex-col justify-between shadow-lg hover:shadow-purple-500/10 transition-all cursor-pointer group active:scale-[0.99]"
           >
             <div>
@@ -168,23 +223,12 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowRegistration(true);
+                  setShowPartnerPortal(true);
                 }}
                 className="w-full py-2.5 px-4 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <span>{currentLang.partnerBtn}</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowFinalization(true);
-                }}
-                className="w-full py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border border-purple-500/30"
-              >
-                <KeyRound className="w-4 h-4" />
-                <span>Finaliser mon compte</span>
               </button>
             </div>
           </div>
