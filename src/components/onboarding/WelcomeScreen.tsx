@@ -21,6 +21,8 @@ interface WelcomeScreenProps {
   onSelectLanguage: (lang: Language) => void;
   onSelectRole: (role: 'user' | 'partner') => void;
   onOpenAdminBackOffice?: () => void;
+  onRegistrationComplete?: () => void;
+  onPartnerAuthenticated?: () => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -28,6 +30,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onSelectLanguage,
   onSelectRole,
   onOpenAdminBackOffice,
+  onRegistrationComplete,
+  onPartnerAuthenticated,
 }) => {
   const [showFinalization, setShowFinalization] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
@@ -42,7 +46,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       <PartnerFinalizationScreen
         onSuccess={() => {
           setShowFinalization(false);
-          onSelectRole('partner');
+          onPartnerAuthenticated?.();
         }}
         onCancel={() => setShowFinalization(false)}
       />
@@ -54,7 +58,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       <PartnerRegistrationForm
         onSuccess={() => {
           setShowRegistration(false);
-          onSelectRole('partner');
+          onRegistrationComplete?.();
         }}
         onCancel={() => setShowRegistration(false)}
       />

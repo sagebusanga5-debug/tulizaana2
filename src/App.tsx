@@ -2107,6 +2107,47 @@ return updated;
             setOnboardingStep('invite_gate');
           }}
           onOpenAdminBackOffice={handleOpenAdminBackOffice}
+          onRegistrationComplete={() => setOnboardingStep('welcome')}
+          onPartnerAuthenticated={() => {
+            void (async () => {
+              const managed = await api.partner.managedOrganizations();
+
+              if (!managed.success || !managed.data) {
+                setShowPartnerAuthModal(true);
+                return;
+              }
+
+              setManagedPartnerOrganizations(managed.data);
+
+              const serverOrg =
+                managed.data.find((o) => o.status === 'approved') || managed.data[0];
+              if (!serverOrg) {
+                setPartnerBlockedBy('PARTNER_NO_ORGANIZATION');
+                setShowPartnerAuthModal(true);
+                return;
+              }
+
+              if (!serverOrg.canPerformSubscriptionActions) {
+                setPartnerBlockedBy(serverOrg.blockedBy);
+                alert(
+                  serverOrg.blockedBy === 'ORGANIZATION_NOT_APPROVED'
+                    ? `Compte en attente de validation : la demande de « ${serverOrg.name} » est en cours d'examen par l'equipe de Tulizaana. Aucun acces n'est accorde avant validation.`
+                    : `Acces restreint pour « ${serverOrg.name} ». Raison : ${serverOrg.blockedBy}.`
+                );
+                return;
+              }
+
+              setCurrentOrganization(serverOrg);
+              setPartnerBlockedBy(null);
+              setIsLoggedIn(true);
+              setIsPartnerAuthenticated(true);
+              setActivePartnerTab('profile');
+              try {
+                localStorage.setItem(STORAGE_KEYS.interfaceMode, 'partner');
+              } catch {}
+              setOnboardingStep('app');
+            })();
+          }}
         />
         {showAdminLoginModal && (
           <AdminLoginModal
