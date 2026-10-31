@@ -1,9 +1,0 @@
-◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
-🌱 Début de l'injection des données de démarrage Tulizaana...
-✅ Plans créés : basic, starter, growth, enterprise
-⚠️  Aucun mot de passe de démonstration fourni : DEMO_PARTNER_ADMIN_PASSWORD, DEMO_PEER_HELPER_PASSWORD, DEMO_MEMBER_PASSWORD sont absentes de l'environnement. Les comptes de démonstration, leurs adhésions, leurs publications et les codes d'invitation associés ne seront pas créés. Les organisations et les cercles ne sont pas affectés.
-✅ Organisations créées : Panzi et ALD-RDC
-⚠️  ADMIN_SEED_PASSWORD absent : le compte administrateur initial n'a pas été créé. Définissez cette variable d'environnement avant d'exécuter le seed si vous souhaitez l'établir.
-✅ Cercles de soutien créés : Drépanocytose Kinshasa et Renaissance Bukavu
-⚠️  Aucun compte emetteur disponible : les codes d'invitation de démonstration n'ont pas été créés. Définissez ADMIN_SEED_PASSWORD ou les variables DEMO_*_PASSWORD pour les obtenir.
-🎉 Initialisation de la base PostgreSQL terminée avec succès !
