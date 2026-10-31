@@ -228,11 +228,11 @@ const [showCreateCommunityModal, setShowCreateCommunityModal] = useState<boolean
 
   // Quand on accede au profil partenaire pour la premiere fois, ouvrir le modal demo
   useEffect(() => {
-    if (activePartnerTab === 'profile' && !partnerDemoActivated && !showPartnerDemo) {
+    if (interfaceMode === 'partner' && activePartnerTab === 'profile' && !partnerDemoActivated && !showPartnerDemo) {
       const timer = setTimeout(() => setShowPartnerDemo(true), 500);
       return () => clearTimeout(timer);
     }
-  }, [activePartnerTab, partnerDemoActivated, showPartnerDemo]);
+  }, [interfaceMode, activePartnerTab, partnerDemoActivated, showPartnerDemo]);
 
   // Tulizaana Central Back Office Admin State
   // Aucune session administrateur n'est derivée d'un indicateur de navigateur :
@@ -3057,8 +3057,8 @@ return updatedList;
         </PartnerLayout>
       )}
 
-      {/* Demo 30 jours partenaire */}
-      {showPartnerDemo && (
+      {/* Demo 30 jours partenaire (uniquement interface partenaire) */}
+      {interfaceMode === 'partner' && showPartnerDemo && (
         <PartnerDemoModal
           organization={localizedCurrentOrganization}
           language={language}

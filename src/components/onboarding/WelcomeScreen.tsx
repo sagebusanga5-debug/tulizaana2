@@ -70,7 +70,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       <PartnerLoginScreen
         onSuccess={() => {
           setShowLogin(false);
-          onSelectRole('partner');
+          onPartnerAuthenticated?.();
         }}
         onCancel={() => setShowLogin(false)}
       />
