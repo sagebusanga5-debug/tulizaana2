@@ -1367,30 +1367,37 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           isOpen={true}
           initialTab={selectedOrgInitialTab}
           onClose={() => setSelectedOrgForValidation(null)}
-          onValidateAndSendEmail={(orgId, code) => {
-            (async () => {
-              try {
-                await api.admin.updateOrganizationStatus(orgId, { status: 'approved', invitationCode: code });
-              } catch (e) {
-                console.error('Validation org API:', e);
+          onValidateAndSendEmail={async (orgId, code): Promise<boolean> => {
+            try {
+              const response = await api.admin.updateOrganizationStatus(orgId, { status: 'approved', invitationCode: code });
+              if (!response.success) {
+                throw new Error(response.error || 'Échec de la validation de l’organisation.');
               }
+              const data: any = response.data ?? {};
+              const finalizationCode = data.finalizationCode || code;
+              const emailSent = data.emailSent === true;
               onUpdateOrganization(orgId, {
                 status: 'approved',
                 isVerified: true,
-                invitationCode: code,
+                invitationCode: finalizationCode,
                 validatedAt: new Date().toISOString(),
-                validationEmailSentAt: new Date().toISOString(),
+                ...(emailSent ? { validationEmailSentAt: new Date().toISOString() } : {}),
               });
               handleRecordLog(
                 'Validation Organisation',
                 'Organisations',
-                `Organisation « ${selectedOrgForValidation.name} » approuvée avec attribution du code ${code}`,
+                `Organisation « ${selectedOrgForValidation.name} » approuvée avec attribution du code ${finalizationCode}`,
                 'success',
                 orgId
               );
               setSelectedOrgForValidation(null);
               showToast(`Organisation « ${selectedOrgForValidation.name} » approuvée avec succès !`);
-            })();
+              return true;
+            } catch (e) {
+              console.error('Validation org API:', e);
+              showToast(`Échec de la validation : ${e instanceof Error ? e.message : 'Erreur inconnue'}`);
+              return false;
+            }
           }}
           onPutUnderReview={(orgId) => {
             onUpdateOrganization(orgId, { status: 'under_review' });

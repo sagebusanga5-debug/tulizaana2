@@ -334,6 +334,7 @@ export async function updateOrganizationStatus(
 
     // Chantier 5 - lors de l'approbation, generer un code de finalisation pour le compte partenaire
     let finalizationCode: string | null = null;
+    let emailSent = false;
     if (isFreshApproval) {
       // Verifier si une préinscription existe
       const preReg = await prisma.partnerPreRegistration.findFirst({
@@ -341,9 +342,10 @@ export async function updateOrganizationStatus(
       });
 
       if (preReg) {
-        // Generer un code de finalisation unique
-        const randomHex = crypto.randomBytes(12).toString("hex").toUpperCase();
-        finalizationCode = `TLZ-FINAL-${randomHex}`;
+        // Utiliser le code fourni par le front, ou en generer un nouveau
+        finalizationCode = (invitationCode && typeof invitationCode === "string" && invitationCode.trim())
+          ? invitationCode.trim().toUpperCase()
+          : `TLZ-FINAL-${crypto.randomBytes(12).toString("hex").toUpperCase()}`;
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 30); // Valide 30 jours
 
@@ -358,16 +360,21 @@ export async function updateOrganizationStatus(
 
         // Envoyer l'email avec le code de finalisation
         if (existing.contactEmail) {
-          await sendValidationEmail({
+          emailSent = await sendValidationEmail({
             to: existing.contactEmail,
             subject: `Finalisez votre compte partenaire - ${existing.name}`,
             body: `Votre organisation ${existing.name} a ete approuvee.\n\nCode de finalisation : ${finalizationCode}\n\nCe code est valide jusqu'au ${expiresAt.toLocaleDateString('fr-FR')}.\n\nPour finaliser votre compte, rendez-vous sur Tulizaana et saisissez ce code avec votre adresse e-mail.`,
           });
         }
+
+        if (existing.contactEmail && !emailSent) {
+          sendError(res, "L'organisation a ete approuvee mais l'email de validation n'a pas pu etre envoye. Verifiez la configuration email (RESEND_API_KEY ou SMTP).", 500);
+          return;
+        }
       }
     }
 
-    sendSuccess(res, { ...updated, finalizationCode: finalizationCode || undefined });
+    sendSuccess(res, { ...updated, finalizationCode: finalizationCode || undefined, emailSent });
   } catch {
     sendError(res, "Impossible de mettre a jour le statut de l'organisation.", 500);
   }

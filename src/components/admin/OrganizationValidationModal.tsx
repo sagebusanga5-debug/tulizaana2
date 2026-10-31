@@ -34,7 +34,7 @@ interface OrganizationValidationModalProps {
     orgId: string,
     invitationCode: string,
     emailDetails?: { to: string; subject: string; body: string }
-  ) => void;
+  ) => Promise<boolean>;
   onPutUnderReview?: (orgId: string) => void;
 }
 
@@ -118,24 +118,29 @@ support@tulizaana.org | Kinshasa • Goma • Dakar • Nairobi`;
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  const handleConfirmValidationAndEmail = () => {
+  const handleConfirmValidationAndEmail = async () => {
     if (!invitationCode.trim()) return;
 
     setIsSendingEmail(true);
+    setEmailSentSuccess(false);
 
-    // Simulate reliable dispatch with feedback
-    setTimeout(() => {
-      setIsSendingEmail(false);
-      setEmailSentSuccess(true);
-      onValidateAndSendEmail(organization.id, invitationCode.trim(), {
+    try {
+      const ok = await onValidateAndSendEmail(organization.id, invitationCode.trim(), {
         to: organization.contactEmail,
         subject: emailSubject,
         body: emailBody,
       });
-      setTimeout(() => {
-        onClose();
-      }, 2000);
-    }, 1200);
+      if (ok) {
+        setEmailSentSuccess(true);
+        setTimeout(() => {
+          onClose();
+        }, 1500);
+      }
+    } catch (e) {
+      console.error('Validation error:', e);
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const handleOpenMailto = () => {
