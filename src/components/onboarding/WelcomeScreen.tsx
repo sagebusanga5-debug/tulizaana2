@@ -83,15 +83,38 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               Choisissez votre situation pour accéder à votre espace organisation.
             </p>
 
+            {/* Option principale : connexion */}
             <button
               onClick={() => {
                 setShowPartnerPortal(false);
                 setShowFinalization(true);
               }}
-              className="w-full py-4 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer border border-purple-500/30 mb-4"
+              className="w-full py-4 px-6 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer shadow-lg shadow-purple-500/20 mb-6"
             >
               <KeyRound className="w-5 h-5" />
-              <span>J'ai déjà un code d'invitation</span>
+              <span>Se connecter avec mon code d'invitation</span>
+            </button>
+
+            {/* Separateur "ou" */}
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider bg-[#070b12] px-3">
+                  ou
+                </span>
+              </div>
+              <div className="border-t border-slate-800 w-full" />
+            </div>
+
+            {/* Options secondaires */}
+            <button
+              onClick={() => {
+                setShowPartnerPortal(false);
+                setShowRegistration(true);
+              }}
+              className="w-full py-4 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer border border-purple-500/30 mb-4"
+            >
+              <Building2 className="w-5 h-5" />
+              <span>Je suis déjà partenaire (connexion ultérieure)</span>
             </button>
 
             <button
@@ -99,7 +122,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 setShowPartnerPortal(false);
                 setShowRegistration(true);
               }}
-              className="w-full py-4 px-6 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer shadow-lg shadow-purple-500/20"
+              className="w-full py-4 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer border border-purple-500/30"
             >
               <ArrowRight className="w-5 h-5" />
               <span>Demander une invitation (nouvelle organisation)</span>
