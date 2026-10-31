@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Globe,
   KeyRound,
+  Mail,
 } from 'lucide-react';
 import { Language } from '../../types';
 import { t } from '../../translations';
@@ -13,6 +14,7 @@ import { TulizaanaLogo } from '../brand/TulizaanaBrand';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
 import { PartnerFinalizationScreen } from './PartnerFinalizationScreen';
 import { PartnerRegistrationForm } from './PartnerRegistrationForm';
+import { PartnerLoginScreen } from './PartnerLoginScreen';
 
 interface WelcomeScreenProps {
   language: Language;
@@ -29,6 +31,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 }) => {
   const [showFinalization, setShowFinalization] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [showPartnerPortal, setShowPartnerPortal] = useState(false);
 
   const currentLang = t[language]?.welcome || t.fr.welcome;
@@ -58,6 +61,18 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     );
   }
 
+  if (showLogin) {
+    return (
+      <PartnerLoginScreen
+        onSuccess={() => {
+          setShowLogin(false);
+          onSelectRole('partner');
+        }}
+        onCancel={() => setShowLogin(false)}
+      />
+    );
+  }
+
   if (showPartnerPortal) {
     return (
       <div className="min-h-screen bg-[#070b12] text-slate-100 flex flex-col">
@@ -83,7 +98,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               Choisissez votre situation pour accéder à votre espace organisation.
             </p>
 
-            {/* Option principale : connexion */}
+            {/* Option principale : finalisation avec code d'invitation */}
             <button
               onClick={() => {
                 setShowPartnerPortal(false);
@@ -92,7 +107,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               className="w-full py-4 px-6 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer shadow-lg shadow-purple-500/20 mb-6"
             >
               <KeyRound className="w-5 h-5" />
-              <span>Se connecter avec mon code d'invitation</span>
+              <span>J'ai une invitation</span>
             </button>
 
             {/* Separateur "ou" */}
@@ -105,18 +120,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <div className="border-t border-slate-800 w-full" />
             </div>
 
-            {/* Options secondaires */}
+            {/* Option secondaire : connexion partenaire existante */}
             <button
               onClick={() => {
                 setShowPartnerPortal(false);
-                setShowRegistration(true);
+                setShowLogin(true);
               }}
               className="w-full py-4 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer border border-purple-500/30 mb-4"
             >
-              <Building2 className="w-5 h-5" />
-              <span>Je suis déjà partenaire (connexion ultérieure)</span>
+              <Mail className="w-5 h-5" />
+              <span>Déjà partenaire</span>
             </button>
 
+            {/* Option secondaire : nouvelle demande d'invitation */}
             <button
               onClick={() => {
                 setShowPartnerPortal(false);
@@ -125,7 +141,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               className="w-full py-4 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer border border-purple-500/30"
             >
               <ArrowRight className="w-5 h-5" />
-              <span>Demander une invitation (nouvelle organisation)</span>
+              <span>Demander une invitation</span>
             </button>
           </div>
         </div>
