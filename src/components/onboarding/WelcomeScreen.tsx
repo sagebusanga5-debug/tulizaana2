@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Users,
   Building2,
   ArrowRight,
   Globe,
+  KeyRound,
 } from 'lucide-react';
 import { Language } from '../../types';
 import { t } from '../../translations';
 import { TulizaanaLogo } from '../brand/TulizaanaBrand';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
+import { PartnerFinalizationScreen } from './PartnerFinalizationScreen';
+import { PartnerRegistrationForm } from './PartnerRegistrationForm';
 
 interface WelcomeScreenProps {
   language: Language;
@@ -23,8 +26,34 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onSelectRole,
   onOpenAdminBackOffice,
 }) => {
+  const [showFinalization, setShowFinalization] = useState(false);
+  const [showRegistration, setShowRegistration] = useState(false);
+
   const currentLang = t[language]?.welcome || t.fr.welcome;
   const commonLang = t[language]?.common || t.fr.common;
+
+  if (showFinalization) {
+    return (
+      <PartnerFinalizationScreen
+        onSuccess={() => {
+          setShowFinalization(false);
+          onSelectRole('partner');
+        }}
+        onCancel={() => setShowFinalization(false)}
+      />
+    );
+  }
+
+  if (showRegistration) {
+    return (
+      <PartnerRegistrationForm
+        onSuccess={() => {
+          setShowRegistration(false);
+        }}
+        onCancel={() => setShowRegistration(false)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#080D14] text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
@@ -135,16 +164,29 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               </p>
             </div>
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectRole('partner');
-              }}
-              className="w-full py-2.5 px-4 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
-            >
-              <span>{currentLang.partnerBtn}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRegistration(true);
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <span>{currentLang.partnerBtn}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowFinalization(true);
+                }}
+                className="w-full py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border border-purple-500/30"
+              >
+                <KeyRound className="w-4 h-4" />
+                <span>Finaliser mon compte</span>
+              </button>
+            </div>
           </div>
         </div>
 

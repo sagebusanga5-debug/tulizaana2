@@ -553,6 +553,21 @@ export const api = {
       }),
   },
 
+  // Finalisation de compte partenaire
+  partnerFinalization: {
+    validateCode: (code: string, email: string) =>
+      request<any>("/api/partner/finalization/validate", {
+        method: "POST",
+        body: JSON.stringify({ code, email }),
+      }),
+
+    finalizeAccount: (code: string, email: string) =>
+      request<any>("/api/partner/finalization/finalize", {
+        method: "POST",
+        body: JSON.stringify({ code, email }),
+      }),
+  },
+
   /**
    * Back Office central.
    *
@@ -679,6 +694,27 @@ export const api = {
       request<{ user: any }>("/api/auth/login", {
         method: "POST",
         body: JSON.stringify(credentials),
+      }),
+
+    /** Soumission d'une candidature d'organisation partenaire (publique, sans auth). */
+    applyOrganization: (data: {
+      name: string;
+      acronym?: string;
+      domain?: string;
+      mission?: string;
+      description?: string;
+      type?: string;
+      country?: string;
+      city?: string;
+      address?: string;
+      responsibleName: string;
+      responsibleTitle?: string;
+      contactEmail: string;
+      contactPhone: string;
+    }) =>
+      request<any>("/api/organizations", {
+        method: "POST",
+        body: JSON.stringify(data),
       }),
 
     /** Identite serveur : role et organisations reellement gerees. */

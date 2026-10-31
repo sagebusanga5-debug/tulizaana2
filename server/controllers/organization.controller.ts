@@ -1,4 +1,5 @@
 ﻿import { Response } from "express";
+import bcrypt from "bcryptjs";
 import { getPrismaClient } from "../config/database.js";
 import { AuthenticatedRequest } from "../middleware/auth.js";
 import { sendSuccess, sendError } from "../utils/response.js";
@@ -235,6 +236,9 @@ export async function getOrganizationManage(req: AuthenticatedRequest, res: Resp
  *
  * L'approbation et l'attribution finale des quotas restent des operations
  * administratives.
+ *
+ * NOUVEAU : Le mot de passe est haché et stocke dans PartnerPreRegistration
+ * pour finalisation ulterieure.
  */
 export async function createOrganization(req: AuthenticatedRequest, res: Response): Promise<void> {
   const prisma = getPrismaClient();
@@ -258,6 +262,10 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
       responsibleTitle,
       contactEmail,
       contactPhone,
+      password,
+      vision,
+      interventionDomains,
+      legalDocuments,
       // Volontairement NON destructures ci-dessous :
       // `status`, `subscriptionPlan`, `quota*`, `paymentStatus`,
       // `subscriptionStartedAt` et `subscriptionExpiresAt` sont ignores.
@@ -265,6 +273,11 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
 
     if (!name || !domain || !mission || !contactEmail || !contactPhone || !responsibleName) {
       sendError(res, "Tous les champs legaux obligatoires doivent etre renseignes.", 400);
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      sendError(res, "Le mot de passe doit contenir au moins 6 caracteres.", 400);
       return;
     }
 
@@ -276,6 +289,9 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
     // Chantier 8.5 - le slug public est genere côté serveur à partir du nom.
     // Il est stable et unique ; un changement de nom ne le recrée pas.
     const slug = await generateUniqueOrganizationSlug(name);
+
+    // Hashage sécurisé du mot de passe pour stockage temporaire
+    const passwordHash = await bcrypt.hash(password, 10);
 
     const organization = await prisma.organization.create({
       data: {
@@ -305,6 +321,23 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
       },
     });
 
+    // Créer l'enregistrement de préinscription avec mot de passe haché
+    await prisma.partnerPreRegistration.create({
+      data: {
+        organizationId: organization.id,
+        email: contactEmail.trim().toLowerCase(),
+        passwordHash,
+        responsibleName: responsibleName.trim(),
+        responsibleTitle: responsibleTitle ? responsibleTitle.trim() : null,
+        vision: vision ? vision.trim() : null,
+        mission: mission.trim(),
+        description: description ? description.trim() : mission.trim(),
+        interventionDomains: interventionDomains || [],
+        legalDocuments: legalDocuments || [],
+        status: "pending",
+      },
+    });
+
     // Journal d'audit
     await prisma.auditLog.create({
       data: {
@@ -313,7 +346,7 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
         action: "ORGANIZATION_APPLICATION_SUBMITTED",
         resource: "Organization",
         resourceId: organization.id,
-        details: `Candidature de l'organisation ${name} (${domain}) deposee.`,
+        details: `Candidature de l'organisation ${name} (${domain}) deposee avec preinscription.`,
         status: "success",
       },
     });
@@ -322,7 +355,7 @@ export async function createOrganization(req: AuthenticatedRequest, res: Respons
       res,
       {
         message:
-          "Votre demande de partenariat a ete enregistree avec succes. Notre equipe d'agrement vous contactera sous 48h.",
+          "Votre demande de partenariat a ete enregistree avec succes. Notre equipe d'agrement vous contactera sous 48h. Si votre demande est approuvee, vous recevrez un code d'invitation par email pour finaliser votre compte.",
         organization,
       },
       201

@@ -83,10 +83,10 @@ function validateMagicBytes(buffer: Buffer, mimeType: string): boolean {
   return true;
 }
 
-function getResourceType(mimeType: string): "image" | "video" | "raw" {
+function getResourceType(mimeType: string): "image" | "video" | "raw" | "auto" {
   if (mimeType.startsWith("image/")) return "image";
   if (mimeType.startsWith("audio/") || mimeType === "application/pdf") return "raw";
-  return "auto" as any;
+  return "auto";
 }
 
 /**
@@ -158,7 +158,7 @@ export async function uploadMedia(req: AuthenticatedRequest, res: Response): Pro
         const resourceType = getResourceType(mimeType);
         const uploadResult = await uploadToCloudinary(dataUrl, {
           folder,
-          resourceType: resourceType === "auto" ? "auto" : resourceType,
+          resourceType,
           tags: ["tulizaana", "community", req.user?.id ? `user-${req.user.id}` : "anonymous"],
         });
         sendSuccess(

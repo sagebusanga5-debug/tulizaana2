@@ -23,6 +23,7 @@ import organizationRoutes from "./server/routes/organization.routes";
 import uploadRoutes from "./server/routes/upload.routes";
 import searchRoutes from "./server/routes/search.routes";
 import partnerReportRoutes from "./server/routes/partner-report.routes";
+import partnerFinalizationRoutes from "./server/routes/partner-finalization.routes";
 
 dotenv.config();
 
@@ -257,6 +258,7 @@ async function startServer() {
   app.use("/api/organizations", organizationRoutes);
   app.use("/api/search", searchRoutes);
   app.use("/api/partner/reports", partnerReportRoutes);
+  app.use("/api/partner/finalization", partnerFinalizationRoutes);
   app.use("/api/upload", uploadRoutes);
 
   // Real-time AI Translation for Dynamic Content (Posts, Comments, Messages, Stories, Campaigns)

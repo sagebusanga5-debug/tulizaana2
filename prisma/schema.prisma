@@ -112,6 +112,7 @@ model Organization {
   subscriptionSnapshots SubscriptionSnapshot[]
   reports            Report[]
   plan Plan? @relation(fields: [planId], references: [id])
+  partnerPreRegistrations PartnerPreRegistration[]
 
   @@index([status])
   @@index([subscriptionPlan])
@@ -119,6 +120,38 @@ model Organization {
   @@index([demoUsed])
   @@index([createdAt])
   @@index([slug])
+}
+
+// ==========================================
+// 2bis. PRÉ-INSCRIPTION PARTENAIRE (Secure Password Storage)
+// ==========================================
+model PartnerPreRegistration {
+  id                    String   @id @default(cuid())
+  organizationId        String
+  email                 String
+  passwordHash          String
+  responsibleName       String
+  responsibleTitle      String?
+  vision                String?
+  mission               String?
+  description           String?
+  interventionDomains   String[]  @default([])
+  legalDocuments        Json?    @default("[]")
+  finalizationCode      String?   @unique
+  finalizationCodeUsed  Boolean  @default(false)
+  finalizationCodeExpiresAt DateTime?
+  status                String   @default("pending") // pending, approved, rejected, completed
+  finalizedAt           DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([finalizationCode])
+  @@index([status])
+  @@index([createdAt])
 }
 
 // ==========================================
