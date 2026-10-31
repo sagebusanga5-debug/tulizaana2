@@ -68,6 +68,7 @@ interface InviteGateScreenProps {
   onSuccessUserLogin: (communityId: string, userProfile?: Partial<UserProfile>) => void;
   onSuccessPartnerLogin: (organizationId: string) => void;
   onRegisterOrganization?: (organization: Organization) => void;
+  onPartnerRegistrationComplete?: () => void;
   onOpenAdminBackOffice?: () => void;
 }
 
@@ -82,6 +83,7 @@ export const InviteGateScreen: React.FC<InviteGateScreenProps> = ({
   onSuccessUserLogin,
   onSuccessPartnerLogin,
   onRegisterOrganization,
+  onPartnerRegistrationComplete,
   onOpenAdminBackOffice,
 }) => {
   const [role, setRole] = useState<'user' | 'partner'>(initialRole);
@@ -285,59 +287,6 @@ export const InviteGateScreen: React.FC<InviteGateScreenProps> = ({
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Vérification du code impossible pour le moment.');
-    }
-
-    // Fallback local pour la démo si l’API est indisponible
-    const foundInv = invitations.find(
-      (inv) => inv.code.toUpperCase() === cleanCode && inv.status === 'active'
-    );
-
-    if (foundInv) {
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-      setSuccessMsg(`Code validé ! Bienvenue dans la communauté ${foundInv.communityName}.`);
-      setTimeout(() => {
-        if (role === 'partner') {
-          onSuccessPartnerLogin(foundInv.organizationId);
-        } else {
-          onSuccessUserLogin(foundInv.communityId);
-        }
-      }, 600);
-      return;
-    }
-
-    if (role === 'partner') {
-      const matchedOrg =
-        organizations.find(
-          (o) =>
-            cleanCode.includes(o.acronym?.toUpperCase() || '') ||
-            cleanCode === `TLZ-ORG-${o.id.toUpperCase()}` ||
-            cleanCode === 'TLZ-PARTNER-DEMO'
-        ) || organizations[0];
-
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-      setSuccessMsg(`Code Partenaire validé ! Accès accordé à ${matchedOrg.name}.`);
-      setTimeout(() => {
-        onSuccessPartnerLogin(matchedOrg.id);
-      }, 600);
-      return;
-    }
-
-    const matchedCommunity = communities.find(
-      (c) =>
-        cleanCode.includes(c.slug.toUpperCase()) ||
-        cleanCode.includes(c.id.toUpperCase()) ||
-        cleanCode === 'TLZ-SANCTUARY-2026' ||
-        cleanCode === 'TLZ-DEMO-ACCESS' ||
-        cleanCode.startsWith('TLZ-')
-    );
-
-    if (matchedCommunity) {
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-      setSuccessMsg(`Code validé ! Bienvenue dans ${matchedCommunity.name}.`);
-      setTimeout(() => {
-        onSuccessUserLogin(matchedCommunity.id);
-      }, 600);
-      return;
     }
 
     setErrorMsg(
@@ -602,11 +551,8 @@ export const InviteGateScreen: React.FC<InviteGateScreenProps> = ({
       onRegisterOrganization(newOrg);
     }
 
-    setCreatedOrgId(orgId);
-    setSubmittedOrgName(partnerForm.orgName);
-    setSubmittedOrgEmail(partnerForm.contactEmail);
-    setViewState('partner_submitted');
-    confetti({ particleCount: 70, spread: 70, origin: { y: 0.5 } });
+    onPartnerRegistrationComplete?.();
+    return;
   };
 
   return (
@@ -919,45 +865,13 @@ export const InviteGateScreen: React.FC<InviteGateScreenProps> = ({
                     : authLang.btnRegisterPartner}
                 </span>
               </button>
-
-              {/* Demo codes fast test tray */}
-              <div className="pt-2 border-t border-slate-800/80">
-                <span className="text-[11px] font-semibold text-slate-400 block mb-1.5 text-center">
-                  Codes de test pour démonstration rapide :
-                </span>
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  {(role === 'user'
-                    ? [
-                        { code: 'TLZ-DREPANO-77', label: 'Drépanocytose' },
-                        { code: 'TLZ-SURVIVANTES-01', label: 'Survivantes' },
-                        { code: 'TLZ-AFYAMIND-99', label: 'Santé Mentale' },
-                      ]
-                    : [
-                        { code: 'TLZ-ORG-PANZI', label: 'Panzi' },
-                        { code: 'TLZ-ORG-ALD', label: 'ALD' },
-                        { code: 'TLZ-PARTNER-DEMO', label: 'Partenaire' },
-                      ]
-                  ).map((item) => (
-                    <button
-                      key={item.code}
-                      onClick={() => {
-                        setLoginMethod('code');
-                        setInviteCodeInput(item.code);
-                      }}
-                      className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-400 text-slate-300 hover:text-cyan-300 font-mono text-[11px] transition-all cursor-pointer"
-                    >
-                      {item.code} <span className="text-slate-500 font-sans">({item.label})</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         )}
 
-        {/* ========================================================================= */}
+        {/* ============================================================================== */}
         {/* VIEW 2: CRÉATION DE COMPTE / DEMANDE D'INVITATION BÉNÉFICIAIRE (3 ÉTAPES) */}
-        {/* ========================================================================= */}
+        {/* ============================================================================== */}
         {viewState === 'register_user' && (
           <div className="space-y-6 animate-fade-in max-w-3xl mx-auto w-full">
             

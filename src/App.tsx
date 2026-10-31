@@ -2182,6 +2182,7 @@ return updated;
           language={language}
           onSelectLanguage={setLanguage}
           onBackToWelcome={() => setOnboardingStep('welcome')}
+          onPartnerRegistrationComplete={() => setOnboardingStep('welcome')}
           onSuccessUserLogin={(communityId, userProfile) => {
             setInterfaceMode('user');
             setIsLoggedIn(true);
