@@ -226,13 +226,13 @@ const [showCreateCommunityModal, setShowCreateCommunityModal] = useState<boolean
     setPartnerDemoActivated(isDemoActivated());
   }, []);
 
-  // Quand on accede au profil partenaire pour la premiere fois, ouvrir le modal demo
+  // Quand on accede a l'interface partenaire pour la premiere fois, ouvrir le modal demo
   useEffect(() => {
-    if (interfaceMode === 'partner' && activePartnerTab === 'profile' && !partnerDemoActivated && !showPartnerDemo) {
-      const timer = setTimeout(() => setShowPartnerDemo(true), 500);
+    if (interfaceMode === 'partner' && !partnerDemoActivated && !showPartnerDemo) {
+      const timer = setTimeout(() => setShowPartnerDemo(true), 300);
       return () => clearTimeout(timer);
     }
-  }, [interfaceMode, activePartnerTab, partnerDemoActivated, showPartnerDemo]);
+  }, [interfaceMode, partnerDemoActivated, showPartnerDemo]);
 
   // Tulizaana Central Back Office Admin State
   // Aucune session administrateur n'est derivée d'un indicateur de navigateur :
