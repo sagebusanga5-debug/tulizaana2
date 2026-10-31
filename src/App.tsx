@@ -31,6 +31,7 @@ import {
   MOCK_MODERATION_REPORTS,
   MOCK_NOTIFICATIONS,
 } from './data/mockData';
+import { PartnerDemoModal, isDemoActivated } from './components/partner/PartnerDemoModal';
 import {
   getLocalizedOrganizations,
   getLocalizedCommunities,
@@ -216,6 +217,22 @@ export function App() {
   const [showCreateOrgModal, setShowCreateOrgModal] = useState<boolean>(false);
 const [showCreateCommunityModal, setShowCreateCommunityModal] = useState<boolean>(false);
   const [selectedOrgForModal, setSelectedOrgForModal] = useState<Organization | null>(null);
+
+  // Demo 30 jours partenaire
+  const [partnerDemoActivated, setPartnerDemoActivated] = useState<boolean>(false);
+  const [showPartnerDemo, setShowPartnerDemo] = useState<boolean>(false);
+
+  useEffect(() => {
+    setPartnerDemoActivated(isDemoActivated());
+  }, []);
+
+  // Quand on accede au profil partenaire pour la premiere fois, ouvrir le modal demo
+  useEffect(() => {
+    if (activePartnerTab === 'profile' && !partnerDemoActivated && !showPartnerDemo) {
+      const timer = setTimeout(() => setShowPartnerDemo(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [activePartnerTab, partnerDemoActivated, showPartnerDemo]);
 
   // Tulizaana Central Back Office Admin State
   // Aucune session administrateur n'est derivée d'un indicateur de navigateur :
@@ -1617,6 +1634,10 @@ return updated;
 
   // Partner Actions
   const handleCreateCampaign = (newCamp: Partial<Campaign>) => {
+    if (!partnerDemoActivated) {
+      setShowPartnerDemo(true);
+      return;
+    }
     const fullCamp: Campaign = {
       id: `camp-${Date.now()}`,
       organizationId: currentOrganization.id,
@@ -1651,6 +1672,10 @@ return updated;
   };
 
   const handleCreateCommunity = (newComm: Partial<Community>) => {
+    if (!partnerDemoActivated) {
+      setShowPartnerDemo(true);
+      return;
+    }
     const fullComm: Community = {
       id: `comm-${Date.now()}`,
       organizationId: currentOrganization.id,
@@ -2933,7 +2958,13 @@ return updated;
                 } catch {}
               }}
               onNavigateTab={setActivePartnerTab}
-              onOpenCreateCommunity={() => setShowCreateCommunityModal(true)}
+              onOpenCreateCommunity={() => {
+                if (!partnerDemoActivated) {
+                  setShowPartnerDemo(true);
+                  return;
+                }
+                setShowCreateCommunityModal(true);
+              }}
               onSelectCommunity={(commId) => {
                 setActivePartnerTab('communities');
               }}
@@ -3024,6 +3055,20 @@ return updatedList;
             />
           )}
         </PartnerLayout>
+      )}
+
+      {/* Demo 30 jours partenaire */}
+      {showPartnerDemo && (
+        <PartnerDemoModal
+          organization={localizedCurrentOrganization}
+          language={language}
+          isOpen={showPartnerDemo}
+          onActivate={() => {
+            setPartnerDemoActivated(true);
+            setShowPartnerDemo(false);
+          }}
+          onClose={() => setShowPartnerDemo(false)}
+        />
       )}
 
       {/* Discrete Desktop Scroll Control Arrows */}
