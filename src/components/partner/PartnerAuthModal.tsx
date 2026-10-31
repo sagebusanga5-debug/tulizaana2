@@ -35,9 +35,9 @@ const COPY = {
     emailPlaceholder: 'referent@organisation.org',
     pwdLabel: 'Mot de passe',
     errorEmpty: 'Veuillez saisir votre adresse e-mail et votre mot de passe.',
-    errorEmptyOrg: "Aucune organisation partenaire n'est associee a ce compte.",
+    errorEmptyOrg: "Ce compte n'est associe a aucune organisation partenaire. Si vous avez deja demande une invitation, finalisez votre compte avec le code recu par mail avant de vous connecter ici.",
     errorMultiOrg: 'Ce compte gere plusieurs organisations. Choisissez celle a ouvrir.',
-    errorInvalid: 'Identifiants invalides. Verifiez votre e-mail et votre mot de passe.',
+    errorInvalid: "Identifiants invalides. Ce compte n'est pas encore reconnu comme compte partenaire. Avez-vous finalise votre compte avec le code d'invitation recu par mail ?",
     verifying: 'Verification de votre session...',
     unlockBtn: "Ouvrir l'Espace Partenaire",
     selectOrgLabel: 'Organisation a ouvrir',
@@ -106,7 +106,7 @@ export const PartnerAuthModal: React.FC<PartnerAuthModalProps> = ({
       const login = await api.partner.login({ email: trimmedEmail, password });
 
       if (!login.success) {
-        setError(texts.errorInvalid);
+        setError(login.error || texts.errorInvalid);
         setIsLoading(false);
         return;
       }
